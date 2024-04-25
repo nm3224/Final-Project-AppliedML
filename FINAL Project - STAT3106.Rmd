@@ -1,0 +1,98 @@
+---
+title: "FINAL PROJECT - STAT3106"
+author: "Marlon Kegel"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(caret)
+library(tidymodels)
+library(haven)
+library(visdat)
+library(plm)
+library(stringr)
+library(corrplot)
+library(cluster)     
+library(factoextra) 
+library(vip) 
+library(igraph)
+```
+
+
+
+## The data - GSS cumulative file (1972 - 2022)
+
+```{r}
+GSS_raw <- read_dta("C:/Users/marlo/OneDrive/Desktop/Uni/S8/final projects/GSS_cumulative_1972-2022/gss_cum.dta")
+
+# big dataset (72,390 rows and 6,694 columns) 
+# very messy, lots of NA
+# look under "https://gssdataexplorer.norc.org/variables/vfilter" to explore variables
+```
+
+
+### Initial cleaning
+
+```{r}
+
+na_per_column <- data.frame(missing = colSums(is.na(GSS_raw)))
+na_per_column$missing <- as.numeric(na_per_column$missing)
+
+# removing variables with less than 5% non-NA
+columns_to_elim <- na_per_column %>% filter(na_per_column$missing <= 0.95 * nrow(GSS_raw))   
+columns_to_elim <- row.names(columns_to_elim)
+columns_to_elim <- as.character(columns_to_elim)
+columns_to_keep <- setdiff(colnames(GSS_raw), columns_to_elim)
+GSS <- GSS_raw %>% select(columns_to_keep)
+
+
+``` 
+
+
+
+### Initial exploring
+
+```{r}
+
+na_per_column <- arrange(na_per_column, missing)
+
+
+slice(na_per_column, 9:50)  # candidates for target variable, bc not as many NA
+                            # the first few are paradata
+
+GSS$occ10 <- as.factor(GSS$occ10)
+
+summary(GSS$occ10)
+
+M <- cor(GSS)
+
+cor_data <- as.data.frame(as.table(M))
+
+# Name the columns appropriately
+names(cor_data) <- c("Row", "Column", "Correlation")
+
+# Filter to avoid redundancy and self-correlation
+cor_data <- subset(cor_data, Row != Column)
+
+# Order by absolute correlation
+cor_data <- cor_data[order(-abs(cor_data$Correlation)), ]
+
+# Select the top N
+top_correlations <- head(cor_data, 100)
+
+# Identify unique variables from the top correlated pairs
+top_vars <- unique(c(top_correlations$Row, top_correlations$Column))
+
+# Subset the original correlation matrix to only these variables
+filtered_M <- M[top_vars, top_vars]
+
+
+corrplot(filtered_M, order = "hclust", 
+         tl.col = "black", tl.srt = 45, # tweak these parameters as needed
+         method = "color", type = "lower")
+```
+
+
