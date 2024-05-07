@@ -110,7 +110,7 @@ GSS_dem[GSS_dem <= -70] <- NA
 
 sum(GSS_dem < 0, na.rm = TRUE)
 
-GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ))
+GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT))
 
 ```
 
@@ -137,7 +137,7 @@ GSS_opin[GSS_opin <= -70] <- NA
 
 sum(GSS_opin < 0, na.rm = TRUE)
 
-GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY))
+GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
 
 ```
 
@@ -166,6 +166,9 @@ GSS_misc$NUMMEN[subset_rows] <- NA
 
 sum(GSS_misc < 0, na.rm = TRUE)
 
+GSS_misc <- GSS_misc  %>%
+  select(!"BALLOT")
+
 ```
 
 
@@ -174,13 +177,13 @@ sum(GSS_misc < 0, na.rm = TRUE)
 ```{r}
 
 na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
-mean(na_column_dem$missing)
+mean(na_column_dem$missing) / nrow(GSS_dem)
 
 na_column_opin <- data.frame(missing = colSums(is.na(GSS_opin)))
-mean(na_column_opin$missing)
+mean(na_column_opin$missing) / nrow(GSS_opin)
 
 na_column_misc <- data.frame(missing = colSums(is.na(GSS_misc)))
-mean(na_column_misc$missing)
+mean(na_column_misc$missing) / nrow(GSS_misc)
 
 ```
 
@@ -190,7 +193,7 @@ mean(na_column_misc$missing)
 
 ```{r}
 
-# removing variables with less than 20% non-NA
+# removing variables with more than 80% NA
 na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
 na_column_dem$missing <- as.numeric(na_column_dem$missing)
 
@@ -201,19 +204,19 @@ columns_to_keep <- setdiff(colnames(GSS_dem), columns_to_elim)
 dem_clean <- GSS_dem %>% select(all_of(columns_to_keep))
 
 
-# removing rows with NA in more than 25% of columns
+# removing rows with NA in more than 30% of columns
 na_row_dem <- rowSums(is.na(dem_clean))
 
-threshold <- ncol(dem_clean) * 0.25
+threshold <- ncol(dem_clean) * 0.3
 
 dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
 
-# removing variables with less than 50% non-NA
+# removing variables with more than 43% NA
 na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
 na_column_dem$missing <- as.numeric(na_column_dem$missing)
 
-columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.5 * nrow(dem_clean))   
+columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.43 * nrow(dem_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(dem_clean), columns_to_elim)
@@ -238,39 +241,39 @@ dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
 opin_clean <- semi_join(GSS_opin, dem_clean, by = c("YEAR", "ID_")) 
 
-# removing variables with less than 50% non-NA
+# removing variables with more than 55% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.5 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.54 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
 opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
 
 
-# removing rows with NA in more than 25% of columns
+# removing rows with NA in more than 30% of columns
 na_row_opin <- rowSums(is.na(opin_clean))
 
-threshold <- ncol(opin_clean) * 0.25
+threshold <- ncol(opin_clean) * 0.3
 
 opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
 
-# removing variables with less than 70% non-NA
+# removing variables with more than 31% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.30 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.31 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
 opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
 
-# removing rows with NA in more than 20% of columns
+# removing rows with NA in more than 15% of columns
 na_row_opin <- rowSums(is.na(opin_clean))
 
-threshold <- ncol(opin_clean) * 0.2
+threshold <- ncol(opin_clean) * 0.15
 
 opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
@@ -290,7 +293,7 @@ dem_clean <- semi_join(dem_clean, opin_clean, by = c("YEAR", "ID_"))
 
 misc_clean <- semi_join(GSS_misc, dem_clean, by = c("YEAR", "ID_")) 
 
-# removing variables with less than 80% non-NA
+# removing variables with more than 20% NA
 na_column_misc <- data.frame(missing = colSums(is.na(misc_clean)))
 na_column_misc$missing <- as.numeric(na_column_misc$missing)
 
@@ -339,13 +342,13 @@ all_clean <- semi_join(all_clean, dem_clean, by = c("YEAR", "ID_"))
 
 ```{r}
 na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
-mean(na_column_dem$missing)
+mean(na_column_dem$missing) / nrow(dem_clean)
 
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
-mean(na_column_opin$missing)
+mean(na_column_opin$missing) / nrow(opin_clean)
 
 na_column_misc <- data.frame(missing = colSums(is.na(misc_clean)))
-mean(na_column_misc$missing)
+mean(na_column_misc$missing) / nrow(misc_clean)
 
 ```
 
@@ -358,11 +361,35 @@ columns_dem <- colnames(dem_clean)
 columns_opin <- colnames(opin_clean)
 columns_misc <- colnames(misc_clean)
 
-setdiff(columns, columns_alt)
+binary_cols <- sapply(all_clean, function(x) length(unique(na.omit(x))) == 2)
+binary_cols <- names(binary_cols[binary_cols])
+binary_cols
+
+sapply(all_clean[binary_cols], unique)
+
+onetwo_cols <- sapply(all_clean, function(x) all(na.omit(x) %in% c(1, 2)))
+onetwo_cols <- names(onetwo_cols[onetwo_cols])
+
+all_clean <- all_clean %>% mutate(across(all_of(onetwo_cols), ~ 2 - .x))
+
+fourfive_cols <- sapply(all_clean, function(x) all(na.omit(x) %in% c(4, 5)))
+fourfive_cols <- names(fourfive_cols[fourfive_cols])
+fourfive_cols
+
+all_clean <- all_clean %>% mutate(across(all_of(fourfive_cols), ~ 5 - .x))
 
 all_clean <- all_clean %>%
-  mutate(across(all_of(c("BALLOT", "WRKSTAT", "WRKSLF", "OCC10", "INDUS10", "MARITAL", "DIVORCE", "WIDOWED", "SPWRKSTA", "SPWRKSLF", "SPOCC10", "SPIND10", "PAWRKSLF", "PAOCC10", "SEX", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "BORN", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "RACLIVE", "HEALTH", "WKSUB", "WKSUBS", "WKSUP", "UNEMP", "OWNGUN", "PHONE", "PAPRES10", "PASEI10", "PRESTG10", "SEI10", "SPPRES10", "SPSEI10", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "SPKATH", "COLATH", "LIBATH", "SPKRAC", "COLRAC", "LIBRAC", "SPKCOM", "COLCOM", "LIBCOM", "SPKMIL", "COLMIL", "LIBMIL", "SPKHOMO", "COLHOMO", "LIBHOMO", "CAPPUN", "GUNLAW", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "ABDEFECT", "ABNOMORE", "ABHLTH", "ABPOOR", "ABRAPE", "ABSINGLE", "ABANY", "XMARSEX", "HOMOSEX", "POLHITOK", "POLABUSE", "POLMURDR", "POLESCAP", "POLATTAK", "TAX", "FUND", "HAPPY", "HAPMAR", "SATJOB", "LIFE", "SATFIN", "FINALTER", "XMOVIE", "FEAR", "PISTOL", "SHOTGUN", "RIFLE", "MAWRKGRW", "EVPAIDSX")), factor))
+  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "PAPRES10", "PASEI10", "PRESTG10", "SEI10", "SPPRES10", "SPSEI10", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY")), factor))
 
+all_clean <- all_clean %>% mutate(OCC10 = as.factor(substr(as.character(OCC10), 1, 2)), 
+                                  PAOCC10 = as.factor(substr(as.character(PAOCC10), 1, 2)), 
+                                  SPOCC10 = as.factor(substr(as.character(SPOCC10), 1, 2)), 
+                                  INDUS10 = as.factor(substr(as.character(SPOCC10), 1, 2)),
+                                  SPIND10 = as.factor(substr(as.character(SPOCC10), 1, 2)))
+
+dem_clean <- all_clean %>% select(all_of(columns_dem))
+opin_clean <- all_clean %>% select(all_of(columns_opin))
+misc_clean <- all_clean %>% select(all_of(columns_misc))
 
 
 ```
