@@ -19,80 +19,351 @@ library(cluster)
 library(factoextra) 
 library(vip) 
 library(igraph)
+library(foreign)
 ```
 
 
 
 ## The data - GSS cumulative file (1972 - 2022)
 
-```{r}
-GSS_raw <- read_dta("C:/Users/marlo/OneDrive/Desktop/Uni/S8/final projects/GSS_cumulative_1972-2022/gss_cum.dta")
 
-# big dataset (72,390 rows and 6,694 columns) 
-# very messy, lots of NA
+#### all variables of interest
+```{r}
+setwd(
+  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/all variables"
+)
+
+read.dct <- function(dct, labels.included = "yes") {
+  temp <- readLines(dct)
+  temp <- temp[grepl("_column", temp)]
+  switch(labels.included, yes = {
+    pattern <- "_column\\(([0-9]+)\\)\\s+([a-z0-9]+)\\s+(.*)\\s+%([0-9]+)[a-z]\\s+(.*)"
+    classes <- c("numeric",
+                 "character",
+                 "character",
+                 "numeric",
+                 "character")
+    N <- 5
+    NAMES <- c("StartPos", "Str", "ColName", "ColWidth", "ColLabel")
+  }, no = {
+    pattern <- "_column\\(([0-9]+)\\)\\s+([a-z0-9]+)\\s+(.*)\\s+%([0-9]+).*"
+    classes <- c("numeric", "character", "character", "numeric")
+    N <- 4
+    NAMES <- c("StartPos", "Str", "ColName", "ColWidth")
+  })
+  temp_metadata <- setNames(lapply(1:N, function(x) {
+    out <- gsub(pattern, paste("\\", x, sep = ""), temp)
+    out <- gsub("^\\s+|\\s+$", "", out)
+    out <- gsub('\"', "", out, fixed = TRUE)
+    class(out) <- classes[x]
+    out
+  }), NAMES)
+  temp_metadata[["ColName"]] <- make.names(gsub("\\s", "", temp_metadata[["ColName"]]))
+  temp_metadata
+}
+
+read.dat <- function(dat, metadata_var, labels.included = "yes") {
+  read.table(dat, col.names = metadata_var[["ColName"]])
+}
+
+
+GSS_metadata <- read.dct("GSS.dct")
+GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
+attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
+GSS_all <- GSS_ascii
+
+rm(GSS_ascii, GSS_metadata)
+
+# big dataset (72,390 rows and 293 columns) 
+# very messy, "-100" = NA / "inapplicable
 # look under "https://gssdataexplorer.norc.org/variables/vfilter" to explore variables
+
+sum(apply(GSS_all, 2, is.numeric)) - ncol(GSS_all)
+
+GSS_all[GSS_all <= -70] <- NA
+subset_rows <- GSS_all$NUMMEN > 700
+GSS_all$NUMMEN[subset_rows] <- NA
+
+sum(GSS_all < 0, na.rm = TRUE)
+
 ```
 
 
-### Initial cleaning
+#### demographic variables
+
+```{r}
+setwd(
+  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/demographic"
+)
+
+
+GSS_metadata <- read.dct("GSS.dct")
+GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
+attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
+GSS_dem <- GSS_ascii
+
+rm(GSS_ascii, GSS_metadata)
+
+sum(apply(GSS_dem, 2, is.numeric)) - ncol(GSS_dem)
+
+GSS_dem[GSS_dem <= -70] <- NA
+
+sum(GSS_dem < 0, na.rm = TRUE)
+
+GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ))
+
+```
+
+
+
+#### opinion variables
+
+```{r}
+setwd(
+  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/opinion"
+)
+
+
+GSS_metadata <- read.dct("GSS.dct")
+GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
+attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
+GSS_opin <- GSS_ascii
+
+rm(GSS_ascii, GSS_metadata)
+
+sum(apply(GSS_opin, 2, is.numeric)) - ncol(GSS_opin)
+
+GSS_opin[GSS_opin <= -70] <- NA
+
+sum(GSS_opin < 0, na.rm = TRUE)
+
+GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY))
+
+```
+
+
+
+#### miscellaneous variables
+
+```{r}
+setwd(
+ "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/miscellaneous"
+)
+
+
+GSS_metadata <- read.dct("GSS.dct")
+GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
+attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
+GSS_misc <- GSS_ascii
+
+rm(GSS_ascii, GSS_metadata, read.dat, read.dct)
+
+sum(apply(GSS_misc, 2, is.numeric)) - ncol(GSS_misc)
+
+GSS_misc[GSS_misc <= -70] <- NA
+subset_rows <- GSS_misc$NUMMEN > 700
+GSS_misc$NUMMEN[subset_rows] <- NA
+
+sum(GSS_misc < 0, na.rm = TRUE)
+
+```
+
+
+## Cleaning
 
 ```{r}
 
-na_per_column <- data.frame(missing = colSums(is.na(GSS_raw)))
-na_per_column$missing <- as.numeric(na_per_column$missing)
+na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
+mean(na_column_dem$missing)
 
-# removing variables with less than 5% non-NA
-columns_to_elim <- na_per_column %>% filter(na_per_column$missing <= 0.95 * nrow(GSS_raw))   
+na_column_opin <- data.frame(missing = colSums(is.na(GSS_opin)))
+mean(na_column_opin$missing)
+
+na_column_misc <- data.frame(missing = colSums(is.na(GSS_misc)))
+mean(na_column_misc$missing)
+
+```
+
+
+
+#### cleaning GSS_dem
+
+```{r}
+
+# removing variables with less than 20% non-NA
+na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
+na_column_dem$missing <- as.numeric(na_column_dem$missing)
+
+columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.8 * nrow(GSS_dem))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
-columns_to_keep <- setdiff(colnames(GSS_raw), columns_to_elim)
-GSS <- GSS_raw %>% select(columns_to_keep)
+columns_to_keep <- setdiff(colnames(GSS_dem), columns_to_elim)
+dem_clean <- GSS_dem %>% select(all_of(columns_to_keep))
 
+
+# removing rows with NA in more than 25% of columns
+na_row_dem <- rowSums(is.na(dem_clean))
+
+threshold <- ncol(dem_clean) * 0.25
+
+dem_clean <- dem_clean[na_row_dem <= threshold, ]
+
+
+# removing variables with less than 50% non-NA
+na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
+na_column_dem$missing <- as.numeric(na_column_dem$missing)
+
+columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.5 * nrow(dem_clean))   
+columns_to_elim <- row.names(columns_to_elim)
+columns_to_elim <- as.character(columns_to_elim)
+columns_to_keep <- setdiff(colnames(dem_clean), columns_to_elim)
+dem_clean <- dem_clean %>% select(all_of(columns_to_keep))
+
+# removing rows with NA in more than 20% of columns
+na_row_dem <- rowSums(is.na(dem_clean))
+
+threshold <- ncol(dem_clean) * 0.2
+
+dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
 ``` 
 
 
 
-### Initial exploring
+#### cleaning GSS_opin
 
 ```{r}
 
-na_per_column <- arrange(na_per_column, missing)
+# keeping only those observations that are in dem_clean
+
+opin_clean <- semi_join(GSS_opin, dem_clean, by = c("YEAR", "ID_")) 
+
+# removing variables with less than 50% non-NA
+na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
+na_column_opin$missing <- as.numeric(na_column_opin$missing)
+
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.5 * nrow(opin_clean))   
+columns_to_elim <- row.names(columns_to_elim)
+columns_to_elim <- as.character(columns_to_elim)
+columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
+opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
 
 
-slice(na_per_column, 9:50)  # candidates for target variable, bc not as many NA
-                            # the first few are paradata
+# removing rows with NA in more than 25% of columns
+na_row_opin <- rowSums(is.na(opin_clean))
 
-GSS$occ10 <- as.factor(GSS$occ10)
+threshold <- ncol(opin_clean) * 0.25
 
-summary(GSS$occ10)
-
-M <- cor(GSS)
-
-cor_data <- as.data.frame(as.table(M))
-
-# Name the columns appropriately
-names(cor_data) <- c("Row", "Column", "Correlation")
-
-# Filter to avoid redundancy and self-correlation
-cor_data <- subset(cor_data, Row != Column)
-
-# Order by absolute correlation
-cor_data <- cor_data[order(-abs(cor_data$Correlation)), ]
-
-# Select the top N
-top_correlations <- head(cor_data, 100)
-
-# Identify unique variables from the top correlated pairs
-top_vars <- unique(c(top_correlations$Row, top_correlations$Column))
-
-# Subset the original correlation matrix to only these variables
-filtered_M <- M[top_vars, top_vars]
+opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
 
-corrplot(filtered_M, order = "hclust", 
-         tl.col = "black", tl.srt = 45, # tweak these parameters as needed
-         method = "color", type = "lower")
+# removing variables with less than 70% non-NA
+na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
+na_column_opin$missing <- as.numeric(na_column_opin$missing)
+
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.30 * nrow(opin_clean))   
+columns_to_elim <- row.names(columns_to_elim)
+columns_to_elim <- as.character(columns_to_elim)
+columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
+opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
+
+# removing rows with NA in more than 20% of columns
+na_row_opin <- rowSums(is.na(opin_clean))
+
+threshold <- ncol(opin_clean) * 0.2
+
+opin_clean <- opin_clean[na_row_opin <= threshold, ]
+
+
+# join it back
+dem_clean <- semi_join(dem_clean, opin_clean, by = c("YEAR", "ID_")) 
+
+``` 
+
+
+
+#### cleaning GSS_misc
+
+```{r}
+
+# keeping only those observations that are in dem_clean
+
+misc_clean <- semi_join(GSS_misc, dem_clean, by = c("YEAR", "ID_")) 
+
+# removing variables with less than 80% non-NA
+na_column_misc <- data.frame(missing = colSums(is.na(misc_clean)))
+na_column_misc$missing <- as.numeric(na_column_misc$missing)
+
+columns_to_elim <- na_column_misc %>% filter(na_column_misc$missing >= 0.2 * nrow(misc_clean))   
+columns_to_elim <- rownames(columns_to_elim)
+columns_to_elim <- as.character(columns_to_elim)
+columns_to_keep <- setdiff(colnames(misc_clean), columns_to_elim)
+misc_clean <- misc_clean %>% select(all_of(columns_to_keep))
+
+
+# removing rows with NA in more than 15% of columns
+na_row_misc <- rowSums(is.na(misc_clean))
+
+threshold <- ncol(misc_clean) * 0.15
+
+misc_clean <- misc_clean[na_row_misc <= threshold, ]
+
+
+# join it back
+dem_clean <- semi_join(dem_clean, misc_clean, by = c("YEAR", "ID_")) 
+opin_clean <- semi_join(opin_clean, misc_clean, by = c("YEAR", "ID_")) 
+
 ```
 
+```{r}
+# removing rows with NA in more than 10% of columns
+na_row_dem <- rowSums(is.na(dem_clean))
+
+threshold <- ncol(dem_clean) * 0.1
+
+dem_clean <- dem_clean[na_row_dem <= threshold, ]
+
+opin_clean <- semi_join(opin_clean, dem_clean, by = c("YEAR", "ID_")) 
+misc_clean <- semi_join(misc_clean, dem_clean, by = c("YEAR", "ID_")) 
+
+columns <- colnames(dem_clean)
+columns <- c(columns, colnames(opin_clean))
+columns <- c(columns, colnames(misc_clean))
+columns <- unique(columns)
+
+all_clean <- GSS_all %>% select(all_of(columns))
+all_clean <- semi_join(all_clean, dem_clean, by = c("YEAR", "ID_")) 
+
+```
+
+
+```{r}
+na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
+mean(na_column_dem$missing)
+
+na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
+mean(na_column_opin$missing)
+
+na_column_misc <- data.frame(missing = colSums(is.na(misc_clean)))
+mean(na_column_misc$missing)
+
+```
+
+#### PRE-PROCESSING
+
+
+```{r}
+
+columns_dem <- colnames(dem_clean)
+columns_opin <- colnames(opin_clean)
+columns_misc <- colnames(misc_clean)
+
+setdiff(columns, columns_alt)
+
+all_clean <- all_clean %>%
+  mutate(across(all_of(c("BALLOT", "WRKSTAT", "WRKSLF", "OCC10", "INDUS10", "MARITAL", "DIVORCE", "WIDOWED", "SPWRKSTA", "SPWRKSLF", "SPOCC10", "SPIND10", "PAWRKSLF", "PAOCC10", "SEX", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "BORN", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "RACLIVE", "HEALTH", "WKSUB", "WKSUBS", "WKSUP", "UNEMP", "OWNGUN", "PHONE", "PAPRES10", "PASEI10", "PRESTG10", "SEI10", "SPPRES10", "SPSEI10", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "SPKATH", "COLATH", "LIBATH", "SPKRAC", "COLRAC", "LIBRAC", "SPKCOM", "COLCOM", "LIBCOM", "SPKMIL", "COLMIL", "LIBMIL", "SPKHOMO", "COLHOMO", "LIBHOMO", "CAPPUN", "GUNLAW", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "ABDEFECT", "ABNOMORE", "ABHLTH", "ABPOOR", "ABRAPE", "ABSINGLE", "ABANY", "XMARSEX", "HOMOSEX", "POLHITOK", "POLABUSE", "POLMURDR", "POLESCAP", "POLATTAK", "TAX", "FUND", "HAPPY", "HAPMAR", "SATJOB", "LIFE", "SATFIN", "FINALTER", "XMOVIE", "FEAR", "PISTOL", "SHOTGUN", "RIFLE", "MAWRKGRW", "EVPAIDSX")), factor))
+
+
+
+```
 
