@@ -505,6 +505,32 @@ corrplot(
 ```
 
 
+#### DATA SPLITTING
+
+```{r}
+index <- createDataPartition(dem_clean$CLASS_, p = 0.75, list = FALSE)
+dem_train <- dem_clean[index, ]
+dem_test <- dem_clean[-index, ]
+
+blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
+  
+             step_string2factor(all_nominal_predictors()) %>%
+             
+             step_nzv(all_predictors()) %>%
+  
+             step_impute_knn(all_predictors()) %>%
+  
+             step_center(all_numeric_predictors()) %>%
+  
+             step_scale(all_numeric_predictors()) %>%
+             
+             step_dummy(all_nominal_predictors())
+
+
+blueprint_prep <- prep(blueprint, training = dem_train)
+dem_train <- bake(blueprint_prep, new_data = dem_train)
+dem_test <- bake(blueprint_prep, new_data = dem_test)
+```
 
 ### XG BOOST
 
