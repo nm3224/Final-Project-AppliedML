@@ -30,7 +30,7 @@ library(foreign)
 #### all variables of interest
 ```{r}
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/all variables"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/all variables"
 )
 
 read.dct <- function(dct, labels.included = "yes") {
@@ -93,7 +93,7 @@ sum(GSS_all < 0, na.rm = TRUE)
 
 ```{r}
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/demographic"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/demographic"
 )
 
 
@@ -120,7 +120,7 @@ GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BA
 
 ```{r}
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/opinion"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/opinion"
 )
 
 
@@ -147,7 +147,7 @@ GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
 
 ```{r}
 setwd(
- "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/miscellaneous"
+ "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/miscellaneous"
 )
 
 
@@ -391,6 +391,32 @@ dem_clean <- all_clean %>% select(all_of(columns_dem))
 opin_clean <- all_clean %>% select(all_of(columns_opin))
 misc_clean <- all_clean %>% select(all_of(columns_misc))
 
+```
 
+#### DATA SPLITTING
+
+```{r}
+index <- createDataPartition(dem_clean$CLASS_, p = 0.75, list = FALSE)
+dem_train <- dem_clean[index, ]
+dem_test <- dem_clean[-index, ]
+
+blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
+  
+             step_string2factor(all_nominal_predictors()) %>%
+             
+             step_nzv(all_predictors()) %>%
+  
+             step_impute_knn(all_predictors()) %>%
+  
+             step_center(all_numeric_predictors()) %>%
+  
+             step_scale(all_numeric_predictors()) %>%
+             
+             step_dummy(all_nominal_predictors())
+
+
+blueprint_prep <- prep(blueprint, training = dem_train)
+dem_train <- bake(blueprint_prep, new_data = dem_train)
+dem_test <- bake(blueprint_prep, new_data = dem_test)
 ```
 
