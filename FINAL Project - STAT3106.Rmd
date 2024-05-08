@@ -20,6 +20,7 @@ library(factoextra)
 library(vip) 
 library(igraph)
 library(foreign)
+library(MLmetrics)
 ```
 
 
@@ -32,8 +33,10 @@ library(foreign)
 
 # link: https://drive.google.com/drive/folders/19ENQfUv7-2iV7OGgbHojL2WBl9T3-ETx?usp=drive_link
 
+# dir: C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/all variables
+
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/all variables"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/all variables"
 )
 
 read.dct <- function(dct, labels.included = "yes") {
@@ -86,7 +89,6 @@ sum(apply(GSS_all, 2, is.numeric)) - ncol(GSS_all)
 GSS_all[GSS_all <= -70] <- NA
 subset_rows <- GSS_all$NUMMEN > 700
 GSS_all$NUMMEN[subset_rows] <- NA
-
 sum(GSS_all < 0, na.rm = TRUE)
 
 ```
@@ -99,7 +101,7 @@ sum(GSS_all < 0, na.rm = TRUE)
 # link: https://drive.google.com/drive/folders/1EsKz48xpbvJ04dhPyC7hNQze-ANdl_el?usp=drive_link
 
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/demographic"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/demographic"
 )
 
 
@@ -113,7 +115,6 @@ rm(GSS_ascii, GSS_metadata)
 sum(apply(GSS_dem, 2, is.numeric)) - ncol(GSS_dem)
 
 GSS_dem[GSS_dem <= -70] <- NA
-
 sum(GSS_dem < 0, na.rm = TRUE)
 
 GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT))
@@ -129,7 +130,7 @@ GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BA
 #link: https://drive.google.com/drive/folders/13Gcx3lokcnMmLWtoA2oDTA6Vgh4Ns224?usp=drive_link
 
 setwd(
-  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/opinion"
+  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/opinion"
 )
 
 
@@ -143,7 +144,6 @@ rm(GSS_ascii, GSS_metadata)
 sum(apply(GSS_opin, 2, is.numeric)) - ncol(GSS_opin)
 
 GSS_opin[GSS_opin <= -70] <- NA
-
 sum(GSS_opin < 0, na.rm = TRUE)
 
 GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
@@ -159,7 +159,7 @@ GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
 #link: https://drive.google.com/drive/folders/1lMWIfpj6drzzgfO_gleIxLs4dfBJbmhz?usp=drive_link
 
 setwd(
- "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/miscellaneous"
+ "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/miscellaneous"
 )
 
 
@@ -175,7 +175,6 @@ sum(apply(GSS_misc, 2, is.numeric)) - ncol(GSS_misc)
 GSS_misc[GSS_misc <= -70] <- NA
 subset_rows <- GSS_misc$NUMMEN > 700
 GSS_misc$NUMMEN[subset_rows] <- NA
-
 sum(GSS_misc < 0, na.rm = TRUE)
 
 GSS_misc <- GSS_misc  %>%
@@ -187,6 +186,11 @@ GSS_misc <- GSS_misc  %>%
 ## Cleaning
 
 ```{r}
+# # change all <NA> to NA
+# GSS_dem <- apply(GSS_dem, 2, function(x) { ifelse(x == "<NA>", NA, x) })
+# GSS_opin <- apply(GSS_opin, 2, function(x) { ifelse(x == "<NA>", NA, x) })
+# GSS_misc <- apply(GSS_misc, 2, function(x) { ifelse(x == "<NA>", NA, x) })
+# typeof(GSS_dem)
 
 na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
 mean(na_column_dem$missing) / nrow(GSS_dem)
@@ -508,6 +512,9 @@ corrplot(
 #### DATA SPLITTING
 
 ```{r}
+set.seed(1)
+levels(dem_clean$CLASS_) <- c("L1", "L2", "L3", "L4")
+
 index <- createDataPartition(dem_clean$CLASS_, p = 0.75, list = FALSE)
 dem_train <- dem_clean[index, ]
 dem_test <- dem_clean[-index, ]
@@ -530,14 +537,174 @@ blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
 blueprint_prep <- prep(blueprint, training = dem_train)
 dem_train <- bake(blueprint_prep, new_data = dem_train)
 dem_test <- bake(blueprint_prep, new_data = dem_test)
+
+
+dem_train <- na.omit(dem_train)
+dem_test <- na.omit(dem_test)
+levels(dem_train$CLASS_) <- c("L1", "L2", "L3", "L4")
+levels(dem_test$CLASS_) <- c("L1", "L2", "L3", "L4")
 ```
 
 ### XG BOOST
+
+```{r}
+resample <- trainControl(method = "cv",
+                         number = 5,
+                         classProbs = TRUE,
+                         summaryFunction = multiClassSummary) 
+
+hyper_grid <- expand.grid(nrounds = c(100),   
+                          max_depth = c(4), 
+                          eta = c(0.05, 0.1, 0.2, 0.3),    
+                          min_child_weight = c(5), 
+                          subsample = c(0.4), 
+                          gamma = 0,
+                          colsample_bytree = 1)
+set.seed(1)
+xg_fit <- train(CLASS_ ~ .,
+                data = dem_train, 
+                method = "xgbTree",
+                verbose = FALSE,
+                trControl = resample, 
+                tuneGrid = hyper_grid,
+                metric = "ROC")
+xg_fit
+```
+```{r}
+xg_control_final <- trainControl(method = "none", classProbs = TRUE)
+
+xg_final_fit <- train(CLASS_ ~ .,
+                data = dem_train, 
+                method = "xgbTree",
+                verbose = FALSE,
+                trControl = xgb_resamp, 
+                # tuneGrid = data.frame(nrounds = 200,    #ADJUST BASED ON ABOVE RESULTS
+                #          max_depth = 8,   
+                #          eta = 0.05,   
+                #          min_child_weight = 5,
+                #          subsample = 0.6,  
+                #          gamma = 0,
+                #          colsample_bytree = 1),
+                metric = "ROC")
+
+# Training set results
+
+xg_pred_train <- predict(xg_final_fit, newdata = dem_train)
+
+xg_train_results <- confusionMatrix(dem_train$CLASS_, xg_pred_train)
+
+xg_train_results
+
+# Test set results
+
+xg_pred_test <- predict(xg_final_fit, newdata = dem_test)
+
+xg_test_results <- confusionMatrix(dem_test$CLASS_, xg_pred_test)
+
+xg_test_results
+```
 
 
 
 ### SUPPORT VECTOR MACHINE 
 
+```{r}
+svm_resample <- trainControl(method = "cv",
+                         number = 5,
+                         classProbs = TRUE,
+                         summaryFunction = multiClassSummary)
+
+SVMGrid_RBF <- expand.grid (sigma = c(0.01, 0.1, 1, 10),  # RBF (Radial Basis Function) SVM
+                            C = c(0.01, 0.1, 1, 10))
+
+# RBF (Radial Basis Function) SVM
+
+set.seed(1)
+
+SVM_RBF <- train(CLASS_ ~ ., 
+                 data = dem_train,
+                 
+                 method = "svmRadial",
+                 
+                 trControl = svm_resample,
+                 
+                 verbose = FALSE,
+                 
+                 tuneGrid = SVMGrid_RBF,
+                 
+                 metric = "ROC")
+
+```
+
+```{r}
+svm_rbf_fit_final <- trainControl(method = "none",
+                                 classProbs = TRUE)
+
+svm_rbf_final <- train(CLASS_ ~ ., 
+                 data = dem_train,
+                 
+                 method = "svmRadial",
+                 
+                 trControl = svm_rbf_fit_final,
+                 
+                 verbose = FALSE,
+                 
+                 # tuneGrid = data.frame(sigma = 0.1, C = 1),   # ADJUST WITH BEST PARAMS
+                 
+                 metric = "ROC")
+
+# Training set results
+
+svm_pred_train <- predict(svm_rbf_final, newdata = dem_train)
+
+svm_train_results <- confusionMatrix(dem_train$CLASS_, svm_pred_train)
+
+svm_train_results
+
+# Test set results
+
+svm_pred_test <- predict(svm_rbf_final, newdata = dem_test)
+
+svm_test_results <- confusionMatrix(dem_test$CLASS_, svm_pred_test)
+
+svm_test_results
+```
 
 
 ### ARTIFICIAL NEURAL NETWORK
+
+```{r}
+set.seed(1)
+resample <- trainControl(method = "cv",
+                        number = 5,
+                        classProbs = TRUE,
+                        summaryFunction = twoClassSummary)
+
+hyper_grid <- expand.grid(layer1 = c(25, 45),
+                          layer2 = c(0, 30),
+                          layer3 = c(0, 15))
+dnn_fit <- train(CLASS_ ~ .,
+                data = dem_train,
+                method = "mlpML",
+                trControl = resample,
+                tuneGrid = hyper_grid,
+                metric = "ROC")
+dnn_fit
+
+```
+
+```{r}
+dnn_final <- train(CLASS_ ~ .,
+                  data = dem_train,
+                  method = "mlpML",
+                  # tuneGrid = data.frame(layer1 = 25, layer2 = 30, layer3 = 0),  #ADJUST WITH BEST PARAMS
+                  metric = "ROC",
+                  trControl = trainControl(method = "none", classProbs = TRUE))
+
+dnn_pred_train <- predict(dnn_final, newdata = dem_train)
+dnn_pred_test <- predict(dnn_final, newdata = dem_test)
+
+print(confusionMatrix(dnn_pred_train, dem_train$CLASS_))
+print(confusionMatrix(dnn_pred_train, dem_test$CLASS_))
+```
+
