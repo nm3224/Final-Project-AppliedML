@@ -525,7 +525,7 @@ blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
              
              step_nzv(all_predictors()) %>%
   
-             step_impute_knn(all_predictors()) %>%
+             # step_impute_knn(all_predictors()) %>%
   
              step_center(all_numeric_predictors()) %>%
   
@@ -678,7 +678,7 @@ set.seed(1)
 resample <- trainControl(method = "cv",
                         number = 5,
                         classProbs = TRUE,
-                        summaryFunction = twoClassSummary)
+                        summaryFunction = multiClassSummary)
 
 hyper_grid <- expand.grid(layer1 = c(25, 45),
                           layer2 = c(0, 30),
