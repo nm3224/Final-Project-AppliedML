@@ -553,13 +553,13 @@ resample <- trainControl(method = "cv",
                          classProbs = TRUE,
                          summaryFunction = multiClassSummary) 
 
-hyper_grid <- expand.grid(nrounds = c(100),   
-                          max_depth = c(4), 
-                          eta = c(0.05, 0.1, 0.2, 0.3),    
-                          min_child_weight = c(5), 
-                          subsample = c(0.4), 
-                          gamma = 0,
-                          colsample_bytree = 1)
+hyper_grid <- expand.grid(nrounds = c(100), 
+                         max_depth = c(4, 6),   
+                         eta = c(0.05, 0.1, 0.2, 0.3),   
+                         min_child_weight = c(5, 10),
+                         subsample = c(0.4),  
+                         gamma = 0,
+                         colsample_bytree = 1)
 set.seed(1)
 xg_fit <- train(CLASS_ ~ .,
                 data = dem_train, 
@@ -569,6 +569,7 @@ xg_fit <- train(CLASS_ ~ .,
                 tuneGrid = hyper_grid,
                 metric = "ROC")
 xg_fit
+plot(xg_fit)
 ```
 ```{r}
 xg_control_final <- trainControl(method = "none", classProbs = TRUE)
@@ -577,14 +578,14 @@ xg_final_fit <- train(CLASS_ ~ .,
                 data = dem_train, 
                 method = "xgbTree",
                 verbose = FALSE,
-                trControl = xgb_resamp, 
-                # tuneGrid = data.frame(nrounds = 200,    #ADJUST BASED ON ABOVE RESULTS
-                #          max_depth = 8,   
-                #          eta = 0.05,   
-                #          min_child_weight = 5,
-                #          subsample = 0.6,  
-                #          gamma = 0,
-                #          colsample_bytree = 1),
+                trControl = xg_control_final, 
+                tuneGrid = data.frame(nrounds = 100,
+                         max_depth = 4,
+                         eta = 0.05,
+                         min_child_weight = 5,
+                         subsample = 0.4,
+                         gamma = 0,
+                         colsample_bytree = 1),
                 metric = "ROC")
 
 # Training set results
@@ -606,68 +607,62 @@ xg_test_results
 
 
 
-### SUPPORT VECTOR MACHINE 
+### RANDOM FOREST
 
 ```{r}
-svm_resample <- trainControl(method = "cv",
-                         number = 5,
-                         classProbs = TRUE,
-                         summaryFunction = multiClassSummary)
+rf_resamp <- trainControl(method = "boot", number = 15, classProbs = TRUE, summaryFunction = multiClassSummary)
+hyper_grid <- expand.grid(mtry = c(13, 15, 17),
+                          splitrule = c("gini", "extratrees"),
+                          min.node.size = c(5, 7, 9)) 
 
-SVMGrid_RBF <- expand.grid (sigma = c(0.01, 0.1, 1, 10),  # RBF (Radial Basis Function) SVM
-                            C = c(0.01, 0.1, 1, 10))
-
-# RBF (Radial Basis Function) SVM
-
-set.seed(1)
-
-SVM_RBF <- train(CLASS_ ~ ., 
-                 data = dem_train,
-                 
-                 method = "svmRadial",
-                 
-                 trControl = svm_resample,
-                 
-                 verbose = FALSE,
-                 
-                 tuneGrid = SVMGrid_RBF,
-                 
-                 metric = "ROC")
-
+rf_fit <- train(CLASS_ ~ .,
+                data = dem_train, 
+                method = "ranger",
+                verbose = FALSE,
+                trControl = rf_resamp, 
+                tuneGrid = hyper_grid,
+                metric = "ROC")
+rf_fit
+plot(rf_fit)
 ```
 
 ```{r}
-svm_rbf_fit_final <- trainControl(method = "none",
-                                 classProbs = TRUE)
+rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
 
-svm_rbf_final <- train(CLASS_ ~ ., 
-                 data = dem_train,
-                 
-                 method = "svmRadial",
-                 
-                 trControl = svm_rbf_fit_final,
-                 
-                 verbose = FALSE,
-                 
-                 # tuneGrid = data.frame(sigma = 0.1, C = 1),   # ADJUST WITH BEST PARAMS
-                 
-                 metric = "ROC")
+
+rf_final <- train(CLASS_ ~., 
+                  
+                  data = dem_train,
+                  
+                  method = "ranger",
+                  
+                  trControl = rf_fit_final,
+                  
+                  metric = "ROC",
+                  
+                  tuneGrid = data.frame(.mtry = 17,
+                                        
+                                        .min.node.size = 5,
+                                        
+                                        .splitrule = "gini"))
+                  
+
 
 # Training set results
 
-svm_pred_train <- predict(svm_rbf_final, newdata = dem_train)
+rf_pred_train <- predict(rf_final, newdata = dem_train)
 
-svm_train_results <- confusionMatrix(dem_train$CLASS_, svm_pred_train)
+rf_train_results <- confusionMatrix(dem_train$CLASS_, rf_pred_train)
 
-svm_train_results
+rf_train_results
 
 # Test set results
 
-svm_pred_test <- predict(svm_rbf_final, newdata = dem_test)
+rf_pred_test <- predict(rf_final, newdata = dem_test)
 
-svm_test_results <- confusionMatrix(dem_test$CLASS_, svm_pred_test)
+rf_test_results <- confusionMatrix(dem_test$CLASS_, rf_pred_test)
 
-svm_test_results
+rf_test_results
 ```
 
 
@@ -697,7 +692,7 @@ dnn_fit
 dnn_final <- train(CLASS_ ~ .,
                   data = dem_train,
                   method = "mlpML",
-                  # tuneGrid = data.frame(layer1 = 25, layer2 = 30, layer3 = 0),  #ADJUST WITH BEST PARAMS
+                  tuneGrid = data.frame(layer1 = 25, layer2 = 0, layer3 = 0),
                   metric = "ROC",
                   trControl = trainControl(method = "none", classProbs = TRUE))
 
@@ -705,6 +700,6 @@ dnn_pred_train <- predict(dnn_final, newdata = dem_train)
 dnn_pred_test <- predict(dnn_final, newdata = dem_test)
 
 print(confusionMatrix(dnn_pred_train, dem_train$CLASS_))
-print(confusionMatrix(dnn_pred_train, dem_test$CLASS_))
+print(confusionMatrix(dnn_pred_test, dem_test$CLASS_))
 ```
 
