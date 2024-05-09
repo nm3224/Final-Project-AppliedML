@@ -28,15 +28,14 @@ library(MLmetrics)
 ## The data - GSS cumulative file (1972 - 2022)
 
 
-#### all variables of interest
+#### demographic variables
+
 ```{r}
 
-# link: https://drive.google.com/drive/folders/19ENQfUv7-2iV7OGgbHojL2WBl9T3-ETx?usp=drive_link
-
-# dir: C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/all variables
+# link: https://drive.google.com/drive/folders/1EsKz48xpbvJ04dhPyC7hNQze-ANdl_el?usp=drive_link
 
 setwd(
-  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/all variables"
+  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/demographic"
 )
 
 read.dct <- function(dct, labels.included = "yes") {
@@ -72,39 +71,6 @@ read.dat <- function(dat, metadata_var, labels.included = "yes") {
   read.table(dat, col.names = metadata_var[["ColName"]])
 }
 
-
-GSS_metadata <- read.dct("GSS.dct")
-GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
-attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
-GSS_all <- GSS_ascii
-
-rm(GSS_ascii, GSS_metadata)
-
-# big dataset (72,390 rows and 293 columns) 
-# very messy, "-100" = NA / "inapplicable
-# look under "https://gssdataexplorer.norc.org/variables/vfilter" to explore variables
-
-sum(apply(GSS_all, 2, is.numeric)) - ncol(GSS_all)
-
-GSS_all[GSS_all <= -70] <- NA
-subset_rows <- GSS_all$NUMMEN > 700
-GSS_all$NUMMEN[subset_rows] <- NA
-sum(GSS_all < 0, na.rm = TRUE)
-
-```
-
-
-#### demographic variables
-
-```{r}
-
-# link: https://drive.google.com/drive/folders/1EsKz48xpbvJ04dhPyC7hNQze-ANdl_el?usp=drive_link
-
-setwd(
-  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/demographic"
-)
-
-
 GSS_metadata <- read.dct("GSS.dct")
 GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
 attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
@@ -115,9 +81,37 @@ rm(GSS_ascii, GSS_metadata)
 sum(apply(GSS_dem, 2, is.numeric)) - ncol(GSS_dem)
 
 GSS_dem[GSS_dem <= -70] <- NA
+
 sum(GSS_dem < 0, na.rm = TRUE)
 
-GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT))
+GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT, CONINC, CONRINC))
+
+
+# adding ethnicity variables
+
+# link: https://drive.google.com/drive/folders/1cu107Drh9OarDbjWvXtgL4S-aXetExJ_?usp=drive_link
+
+setwd(
+"C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/ethnicity"
+)
+
+GSS_metadata <- read.dct("GSS.dct")
+GSS_ascii <- read.dat("GSS.dat", GSS_metadata)
+attr(GSS_ascii, "col.label") <- GSS_metadata[["ColLabel"]]
+GSS_his <- GSS_ascii
+
+rm(GSS_ascii, GSS_metadata)
+
+sum(apply(GSS_his, 2, is.numeric)) - ncol(GSS_his)
+
+GSS_his[GSS_his <= -70] <- NA
+
+sum(GSS_his < 0, na.rm = TRUE)
+GSS_his <- GSS_his %>% select(!c(BALLOT, ETHNIC))
+
+GSS_dem <- full_join(GSS_dem, GSS_his, by = c("ID_", "YEAR"))
+
+rm(GSS_his)
 
 ```
 
@@ -130,7 +124,7 @@ GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BA
 #link: https://drive.google.com/drive/folders/13Gcx3lokcnMmLWtoA2oDTA6Vgh4Ns224?usp=drive_link
 
 setwd(
-  "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/opinion"
+  "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/opinion"
 )
 
 
@@ -144,6 +138,7 @@ rm(GSS_ascii, GSS_metadata)
 sum(apply(GSS_opin, 2, is.numeric)) - ncol(GSS_opin)
 
 GSS_opin[GSS_opin <= -70] <- NA
+
 sum(GSS_opin < 0, na.rm = TRUE)
 
 GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
@@ -159,7 +154,7 @@ GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
 #link: https://drive.google.com/drive/folders/1lMWIfpj6drzzgfO_gleIxLs4dfBJbmhz?usp=drive_link
 
 setwd(
- "C:/Users/dshew/Spring_2024_Classes/applied_ml/Final-Project-AppliedML/miscellaneous"
+ "C:/Users/marlo/OneDrive/Desktop/Uni/S8/Applied Machine Learning (STAT3106)/final_project/miscellaneous"
 )
 
 
@@ -175,10 +170,11 @@ sum(apply(GSS_misc, 2, is.numeric)) - ncol(GSS_misc)
 GSS_misc[GSS_misc <= -70] <- NA
 subset_rows <- GSS_misc$NUMMEN > 700
 GSS_misc$NUMMEN[subset_rows] <- NA
+
 sum(GSS_misc < 0, na.rm = TRUE)
 
 GSS_misc <- GSS_misc  %>%
-  select(!"BALLOT")
+  select(!BALLOT)
 
 ```
 
@@ -186,11 +182,6 @@ GSS_misc <- GSS_misc  %>%
 ## Cleaning
 
 ```{r}
-# # change all <NA> to NA
-# GSS_dem <- apply(GSS_dem, 2, function(x) { ifelse(x == "<NA>", NA, x) })
-# GSS_opin <- apply(GSS_opin, 2, function(x) { ifelse(x == "<NA>", NA, x) })
-# GSS_misc <- apply(GSS_misc, 2, function(x) { ifelse(x == "<NA>", NA, x) })
-# typeof(GSS_dem)
 
 na_column_dem <- data.frame(missing = colSums(is.na(GSS_dem)))
 mean(na_column_dem$missing) / nrow(GSS_dem)
@@ -220,6 +211,9 @@ columns_to_keep <- setdiff(colnames(GSS_dem), columns_to_elim)
 dem_clean <- GSS_dem %>% select(all_of(columns_to_keep))
 
 
+# removing rows with NAs in the target feature
+dem_clean <- dem_clean %>% filter(is.na(CLASS_) != T)
+
 # removing rows with NA in more than 30% of columns
 na_row_dem <- rowSums(is.na(dem_clean))
 
@@ -228,11 +222,11 @@ threshold <- ncol(dem_clean) * 0.3
 dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
 
-# removing variables with more than 43% NA
+# removing variables with more than 40% NA
 na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
 na_column_dem$missing <- as.numeric(na_column_dem$missing)
 
-columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.43 * nrow(dem_clean))   
+columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.40 * nrow(dem_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(dem_clean), columns_to_elim)
@@ -254,14 +248,13 @@ dem_clean <- dem_clean[na_row_dem <= threshold, ]
 ```{r}
 
 # keeping only those observations that are in dem_clean
-
 opin_clean <- semi_join(GSS_opin, dem_clean, by = c("YEAR", "ID_")) 
 
-# removing variables with more than 55% NA
+# removing variables with more than 53% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.54 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.53 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
@@ -276,11 +269,11 @@ threshold <- ncol(opin_clean) * 0.3
 opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
 
-# removing variables with more than 31% NA
+# removing variables with more than 30% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.31 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.3 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
@@ -352,8 +345,11 @@ columns <- c(columns, colnames(opin_clean))
 columns <- c(columns, colnames(misc_clean))
 columns <- unique(columns)
 
-all_clean <- GSS_all %>% select(all_of(columns))
-all_clean <- semi_join(all_clean, dem_clean, by = c("YEAR", "ID_")) 
+all_clean <- left_join(dem_clean, opin_clean, by = c("YEAR", "ID_", "CLASS_"))
+all_clean <- left_join(all_clean, misc_clean, by = c("YEAR", "ID_", "CLASS_", "PARTYID", "POLVIEWS", "FUND16", "HEALTH", "PHONE")) 
+
+setdiff(colnames(all_clean), columns)
+setdiff(columns, colnames(all_clean))
 
 # removing variables with more than 30% overall NA
 na_column_all <- data.frame(missing = colSums(is.na(all_clean)))
@@ -365,10 +361,10 @@ columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(all_clean), columns_to_elim)
 all_clean <- all_clean %>% select(all_of(columns_to_keep))
 
-# removing rows with NA in more than 30% of all columns
+# removing rows with NA in more than 20% of all columns
 na_row_all <- rowSums(is.na(all_clean))
 
-threshold <- ncol(all_clean) * 0.3
+threshold <- ncol(all_clean) * 0.2
 
 all_clean <- all_clean[na_row_all <= threshold, ]
 
@@ -385,12 +381,12 @@ columns_misc <- intersect(colnames(misc_clean), colnames(all_clean))
 
 binary_cols <- sapply(all_clean, function(x) length(unique(na.omit(x))) == 2)
 binary_cols <- names(binary_cols[binary_cols])
-binary_cols
 
-sapply(all_clean[binary_cols], unique)
+sapply(all_clean[,binary_cols], unique)
 
 onetwo_cols <- sapply(all_clean, function(x) all(na.omit(x) %in% c(1, 2)))
 onetwo_cols <- names(onetwo_cols[onetwo_cols])
+onetwo_cols
 
 all_clean <- all_clean %>% mutate(across(all_of(onetwo_cols), ~ 2 - .x))
 
@@ -401,7 +397,13 @@ fourfive_cols
 all_clean <- all_clean %>% mutate(across(all_of(fourfive_cols), ~ 5 - .x))
 
 all_clean <- all_clean %>%
-  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "PAPRES10", "PASEI10", "PRESTG10", "SEI10", "SPPRES10", "SPSEI10", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY")), factor))
+  mutate(across(all_of(binary_cols), as.integer))
+
+all_clean <- all_clean %>%
+  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY", "DEGREE", "SPDEG", "PADEG", "MADEG", "ETH1")), as.character))
+
+all_clean <- all_clean %>%
+  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY", "DEGREE", "SPDEG", "PADEG", "MADEG", "ETH1")), factor))
 
 all_clean <- all_clean %>% mutate(OCC10 = as.factor(substr(as.character(OCC10), 1, 2)), 
                                   PAOCC10 = as.factor(substr(as.character(PAOCC10), 1, 2)), 
@@ -409,10 +411,11 @@ all_clean <- all_clean %>% mutate(OCC10 = as.factor(substr(as.character(OCC10), 
                                   INDUS10 = as.factor(substr(as.character(SPOCC10), 1, 2)),
                                   SPIND10 = as.factor(substr(as.character(SPOCC10), 1, 2)))
 
+all_clean <- all_clean %>% filter(is.na(CLASS_) != T)
+
 dem_clean <- all_clean %>% select(all_of(columns_dem))
 opin_clean <- all_clean %>% select(all_of(columns_opin))
 misc_clean <- all_clean %>% select(all_of(columns_misc))
-
 
 ```
 
@@ -434,6 +437,10 @@ mean(na_column_misc$missing) / nrow(misc_clean)
 
 ```{r}
 
+length(levels(all_clean$ETH1))
+length(levels(all_clean$OCC10))
+length(levels(all_clean$SPOCC10))
+
 sum(is.na(all_clean)) / length(unlist(all_clean))
 colSums(is.na(all_clean))
 
@@ -441,70 +448,333 @@ na_count_per_row <- rowSums(is.na(all_clean))
 na_count_per_row <- as.factor(na_count_per_row)
 summary(na_count_per_row)
 
-dem1 <- dem_clean %>% select(1:20)
-dem2 <- dem_clean %>% select(21:40)
-dem3 <- dem_clean %>% select(41:70)
-vis_miss(dem1)
-vis_miss(dem2)
-vis_miss(dem3)
+dem1 <- dem_clean %>% select(1:22)
+dem2 <- dem_clean %>% select(23:45)
+dem3 <- dem_clean %>% select(46:69)
+vis_dat(dem1)
+vis_dat(dem2)
+vis_dat(dem3)
 
 
 opin1 <- opin_clean %>% select(1:21)
-opin2 <- opin_clean %>% select(22:40)
-opin3 <- opin_clean %>% select(40:68)
-vis_miss(opin1)
-vis_miss(opin2)
-vis_miss(opin3)
+opin2 <- opin_clean %>% select(22:43)
+opin3 <- opin_clean %>% select(44:68)
+vis_dat(opin1)
+vis_dat(opin2)
+vis_dat(opin3)
 
-vis_miss(misc_clean)
+vis_dat(misc_clean)
 
 nearZeroVar(all_clean)
 
+```
 
-numeric1 <- sapply(dem1, is.numeric)
 
-# Subset the data frame to only numeric columns
-cor_matrix <- cor(dem1[, numeric1], use = "pairwise.complete.obs")
+```{r}
 
-corrplot(
-  cor_matrix,
-  method = "color",
-  type = "upper",
-  order = "hclust",
-  addCoef.col = "black",
-  tl.col = "black",
-  tl.srt = 45
-)
+numeric <- sapply(dem_clean, is.numeric)
+numeric <- numeric[numeric == T]
+numeric <- names(numeric)
 
-numeric2 <- sapply(dem2, is.numeric)
+cor_matrix <- cor(dem_clean[, numeric], use = "pairwise.complete.obs")
 
-# Subset the data frame to only numeric columns
-cor_matrix <- cor(dem2[, numeric2], use = "pairwise.complete.obs")
+cor_matrix <- as.data.frame(cor_matrix)
 
-corrplot(
-  cor_matrix,
-  method = "color",
-  type = "upper",
-  order = "hclust",
-  addCoef.col = "black",
-  tl.col = "black",
-  tl.srt = 45
-)
+condition_met <- cor_matrix > 0.6 | cor_matrix < -0.6
+rows_to_keep <- rowSums(condition_met) != 1
+cor_matrix <- cor_matrix[rows_to_keep, ]
+cols_to_keep <- colSums(condition_met) != 1
+cor_matrix <- cor_matrix[, cols_to_keep]
 
-numeric3 <- sapply(dem3, is.numeric)
+cor_matrix <- as.matrix(cor_matrix)
 
-# Subset the data frame to only numeric columns
-cor_matrix <- cor(dem3[, numeric3], use = "pairwise.complete.obs")
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper",
+         order = "hclust",  # Order variables based on hierarchical clustering
+         tl.col = "black",  # Color of text labels
+         tl.srt = 45,  # Rotation of text labels
+         addCoef.col = "black")  # Add coefficient colors
 
-corrplot(
-  cor_matrix,
-  method = "color",
-  type = "upper",
-  order = "hclust",
-  addCoef.col = "black",
-  tl.col = "black",
-  tl.srt = 45
-)
+#
+
+numeric <- sapply(opin_clean, is.numeric)
+numeric <- numeric[numeric == T]
+numeric <- names(numeric)
+
+cor_matrix <- cor(opin_clean[, numeric], use = "pairwise.complete.obs")
+
+cor_matrix <- as.data.frame(cor_matrix)
+
+condition_met <- cor_matrix > 0.6 | cor_matrix < -0.6
+rows_to_keep <- rowSums(condition_met) != 1
+cor_matrix <- cor_matrix[rows_to_keep, ]
+cols_to_keep <- colSums(condition_met) != 1
+cor_matrix <- cor_matrix[, cols_to_keep]
+
+cor_matrix <- as.matrix(cor_matrix)
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper",
+         order = "hclust",  # Order variables based on hierarchical clustering
+         tl.col = "black",  # Color of text labels
+         tl.srt = 45,  # Rotation of text labels
+         addCoef.col = "black")  # Add coefficient colors
+
+#
+
+numeric <- sapply(misc_clean, is.numeric)
+numeric <- numeric[numeric == T]
+numeric <- names(numeric)
+
+cor_matrix <- cor(misc_clean[, numeric], use = "pairwise.complete.obs")
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper",
+         order = "hclust",  # Order variables based on hierarchical clustering
+         tl.col = "black",  # Color of text labels
+         tl.srt = 45,  # Rotation of text labels
+         addCoef.col = "black")  # Add coefficient colors
+
+# 
+
+numeric <- sapply(all_clean, is.numeric)
+numeric <- numeric[numeric == T]
+numeric <- names(numeric)
+
+cor_matrix <- cor(all_clean[, numeric], use = "pairwise.complete.obs")
+
+cor_matrix <- as.data.frame(cor_matrix)
+
+condition_met <- cor_matrix > 0.7 | cor_matrix < -0.7
+rows_to_keep <- rowSums(condition_met) != 1
+cor_matrix <- cor_matrix[rows_to_keep, ]
+cols_to_keep <- colSums(condition_met) != 1
+cor_matrix <- cor_matrix[, cols_to_keep]
+
+cor_matrix <- as.matrix(cor_matrix)
+
+corrplot(cor_matrix, 
+         method = "color", 
+         type = "upper",
+         order = "hclust",  # Order variables based on hierarchical clustering
+         tl.col = "black",  # Color of text labels
+         tl.srt = 45,  # Rotation of text labels
+         addCoef.col = "black")  # Add coefficient colors
+
+```
+
+```{r}
+
+par(mfrow = c(2, 3))
+hist(all_clean$REALINC, breaks = 20)
+hist(all_clean$EDUC, breaks = 20)
+hist(all_clean$PRESTG10, breaks = 20)
+hist(all_clean$REALRINC, breaks = 30)
+hist(all_clean$AGE, breaks = 20)
+hist(all_clean$HRS1, breaks = 20)
+
+```
+
+
+```{r}
+
+frequency <- data.frame(class_id = all_clean$CLASS_, year = all_clean$YEAR)
+frequency <- frequency %>% mutate(class_id = case_when(
+  class_id == 1 ~ "Lower Class", 
+  class_id == 2 ~ "Working Class",
+  class_id == 3 ~ "Middle Class",
+  class_id == 4 ~ "Upper Class",
+))
+
+frequency$decade <- paste0(((frequency$year %/% 10) * 10), "s")
+frequency$decade <- as.factor(frequency$decade)
+
+frequency$class_id <- factor(frequency$class_id, ordered = T, levels = c("Lower Class", "Working Class", "Middle Class", "Upper Class"))
+frequency <- na.omit(frequency)
+
+frequency <- frequency %>%
+  group_by(decade, class_id) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+decade_n <- frequency %>%
+  group_by(decade) %>%
+  summarise(n = sum(count)) 
+
+frequency <- frequency %>%
+  left_join(decade_n, by = "decade")
+
+class_id_plot <- ggplot(frequency, aes(x = class_id, y = count, fill = class_id)) +
+  geom_col() +
+  geom_text(
+    aes(label = sprintf("%.1f%%", percentage)),
+    vjust = -0.5,
+    position = position_dodge(width = 0.9),
+    color = "black"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "Lower Class" = "lightblue1",
+      "Working Class" = "navajowhite",
+      "Middle Class" = "aquamarine",
+      "Upper Class" = "mistyrose2"
+    )
+  ) +
+  ggtitle("Subjective Class Identification") +
+  ylab("Frequency") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+class_id_plot +
+  facet_wrap(~ decade) +
+  geom_text(data = decade_n, aes(x = 4, y = 900, label = paste("n =", n)), 
+            inherit.aes = FALSE, check_overlap = TRUE, color = "grey50", size = 3)
+
+```
+
+
+```{r}
+
+frequency <- data.frame(race = all_clean$RACE, year = all_clean$YEAR)
+frequency <- frequency %>% mutate(race = case_when(
+  race == 1 ~ "White", 
+  race == 2 ~ "Black",
+  race == 3 ~ "Other"
+))
+
+frequency$decade <- paste0(((frequency$year %/% 10) * 10), "s")
+frequency$decade <- as.factor(frequency$decade)
+
+frequency$race <- factor(frequency$race, ordered = T, levels = c("White", "Black", "Other"))
+frequency <- na.omit(frequency)
+
+frequency <- frequency %>%
+  group_by(decade, race) %>%
+  summarise(count = n()) %>%
+  mutate(percentage = count / sum(count) * 100)
+
+decade_n <- frequency %>%
+  group_by(decade) %>%
+  summarise(n = sum(count)) 
+
+frequency <- frequency %>%
+  left_join(decade_n, by = "decade")
+
+racial_comp_plot <- ggplot(frequency, aes(x = race, y = count, fill = race)) +
+  geom_col() +
+  geom_text(
+    aes(label = sprintf("%.1f%%", percentage)),
+    vjust = -0.2,
+    position = position_dodge(width = 0.9),
+    color = "black"
+  ) +
+  scale_fill_manual(
+    values = c(
+      "White" = "lightblue1",
+      "Black" = "mistyrose2",
+      "Other" = "aquamarine"
+    )
+  ) +
+  ggtitle("Racial Composition") +
+  ylab("Frequency") +
+   coord_cartesian(ylim = c(0, 1500)) +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+racial_comp_plot +
+  facet_wrap(~ decade) +
+  geom_text(data = decade_n, aes(x = 3.3, y = 1370, label = paste("n =", n)), 
+            inherit.aes = FALSE, check_overlap = TRUE, color = "grey50", size = 3)
+
+```
+
+
+```{r}
+eth1 <- as.data.frame(summary(all_clean$ETH1))
+colnames(eth1) <- c("count")
+
+eth1 %>%
+  arrange(desc(count)) %>%
+  slice_head(n = 20)
+
+frequency <- data.frame(ethnic = all_clean$ETH1)
+frequency <- frequency %>% mutate(ethnic = case_when(
+  ethnic == 11 ~ "German", 
+  ethnic == 8 ~ "English",
+  ethnic == 14 ~ "Irish",
+  ethnic == 15 ~ "Italian",
+  ethnic == 1 ~ "African",
+  ethnic == 24 ~ "Scots",
+  ethnic == 17 ~ "Mexican",
+  ethnic == 30 ~ "NativeAm",
+  ethnic == 10 ~ "French",
+  ethnic == 21 ~ "Polish",
+  ethnic == 23 ~ "Russian",
+  ethnic == 26 ~ "Swede",
+  ethnic == 19 ~ "Norweg",
+  ethnic == 18 ~ "Dutch",
+  is.na(ethnic) ~ NA,
+  T ~ "Other"
+))
+
+frequency$ethnic <- factor(frequency$ethnic, ordered = T, levels = c("German", "English / Welsh", "Irish", "Italian", "African", "Scots", "Mexican", "NativeAm", "French", "Polish", "Russian", "Swede", "Norweg", "Dutch", "Other"))
+frequency <- na.omit(frequency)
+
+frequency <- frequency %>%
+  group_by(ethnic) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  mutate(percentage = count / sum(count) * 100)
+
+ethnic_comp_plot <- ggplot(frequency, aes(x = ethnic, y = count)) +
+  geom_col(colour = "grey90", fill = "grey40", alpha = 0.9) +
+  geom_text(
+    aes(label = sprintf("%.1f%%", percentage)),
+    vjust = -0.5,
+    position = position_dodge(width = 0.9),
+    color = "black"
+  ) +
+  ggtitle("Family Origin / Ethnic background") +
+  ylab("Frequency") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(hjust = 0.5),
+    axis.title.x = element_blank(),
+    legend.position = "none"
+  )
+
+ethnic_comp_plot
+
+```
+
+
+```{r}
+
+year <- ggplot(all_clean, aes(x = YEAR)) +
+  geom_histogram(
+    binwidth = 2,
+    na.rm = T,
+    colour = "grey90",
+    fill = "grey40", 
+    alpha = 0.9
+  ) +
+  ggtitle("Year of Interview") +
+  scale_x_continuous(breaks = seq(1980, 2020, by = 5)) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5), axis.title.y = element_blank())
+
+year
 
 ```
 
@@ -512,38 +782,45 @@ corrplot(
 #### DATA SPLITTING
 
 ```{r}
-set.seed(1)
+remove <- ls()
+remove <- remove[!remove %in% c("all_clean", "dem_clean", "opin_clean", "misc_clean")]
+rm(list = remove)
+
 levels(dem_clean$CLASS_) <- c("L1", "L2", "L3", "L4")
 
-index <- createDataPartition(dem_clean$CLASS_, p = 0.75, list = FALSE)
+set.seed(1)
+index <- createDataPartition(dem_clean$CLASS_, p = 0.7, list = FALSE)
 dem_train <- dem_clean[index, ]
 dem_test <- dem_clean[-index, ]
 
 blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
   
-             step_string2factor(all_nominal_predictors()) %>%
-             
-             step_nzv(all_predictors()) %>%
+  step_string2factor(all_nominal_predictors()) %>%
   
-             # step_impute_knn(all_predictors()) %>%
+  step_nzv(all_predictors()) %>%
   
-             step_center(all_numeric_predictors()) %>%
+  step_impute_knn(all_predictors()) %>%
   
-             step_scale(all_numeric_predictors()) %>%
-             
-             step_dummy(all_nominal_predictors())
+  step_other(all_nominal_predictors(),
+             threshold = 0.01,
+             other = "Other") %>%
+  
+  step_center(all_numeric_predictors()) %>%
+  
+  step_scale(all_numeric_predictors()) %>%
+  
+  step_dummy(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors(), freq_cut = 30, unique_cut = 20)
 
 
 blueprint_prep <- prep(blueprint, training = dem_train)
 dem_train <- bake(blueprint_prep, new_data = dem_train)
 dem_test <- bake(blueprint_prep, new_data = dem_test)
 
-
-dem_train <- na.omit(dem_train)
-dem_test <- na.omit(dem_test)
-levels(dem_train$CLASS_) <- c("L1", "L2", "L3", "L4")
-levels(dem_test$CLASS_) <- c("L1", "L2", "L3", "L4")
+nearZeroVar(dem_test)
 ```
+
 
 ### XG BOOST
 
@@ -553,24 +830,30 @@ resample <- trainControl(method = "cv",
                          classProbs = TRUE,
                          summaryFunction = multiClassSummary) 
 
-hyper_grid <- expand.grid(nrounds = c(100), 
-                         max_depth = c(4, 6),   
-                         eta = c(0.05, 0.1, 0.2, 0.3),   
-                         min_child_weight = c(5, 10),
-                         subsample = c(0.4),  
-                         gamma = 0,
-                         colsample_bytree = 1)
+hyper_grid <- expand.grid(nrounds = c(100, 150),   
+                          max_depth = c(4, 6), 
+                          eta = c(0.05, 0.1),    
+                          min_child_weight = c(5, 10), 
+                          subsample = c(0.4, 0.6), 
+                          gamma = 0,
+                          colsample_bytree = 1)
 set.seed(1)
-xg_fit <- train(CLASS_ ~ .,
-                data = dem_train, 
-                method = "xgbTree",
-                verbose = FALSE,
-                trControl = resample, 
-                tuneGrid = hyper_grid,
-                metric = "ROC")
+suppressWarnings(
+  xg_fit <- train(
+    CLASS_ ~ .,
+    data = dem_train,
+    method = "xgbTree",
+    verbose = FALSE,
+    trControl = resample,
+    tuneGrid = hyper_grid,
+    metric = "ROC"
+  )
+)
 xg_fit
+
 plot(xg_fit)
 ```
+
 ```{r}
 xg_control_final <- trainControl(method = "none", classProbs = TRUE)
 
@@ -579,13 +862,13 @@ xg_final_fit <- train(CLASS_ ~ .,
                 method = "xgbTree",
                 verbose = FALSE,
                 trControl = xg_control_final, 
-                tuneGrid = data.frame(nrounds = 100,
-                         max_depth = 4,
-                         eta = 0.05,
-                         min_child_weight = 5,
-                         subsample = 0.4,
-                         gamma = 0,
-                         colsample_bytree = 1),
+                tuneGrid = data.frame(nrounds = 150,    #ADJUST BASED ON ABOVE RESULTS
+                          max_depth = 4,   
+                          eta = 0.05,   
+                          min_child_weight = 5,
+                          subsample = 0.6,  
+                          gamma = 0,
+                          colsample_bytree = 1),
                 metric = "ROC")
 
 # Training set results
@@ -605,15 +888,16 @@ xg_test_results <- confusionMatrix(dem_test$CLASS_, xg_pred_test)
 xg_test_results
 ```
 
-
-
-### RANDOM FOREST
+### RANDOM FOREST 
 
 ```{r}
 rf_resamp <- trainControl(method = "boot", number = 15, classProbs = TRUE, summaryFunction = multiClassSummary)
 hyper_grid <- expand.grid(mtry = c(13, 15, 17),
                           splitrule = c("gini", "extratrees"),
                           min.node.size = c(5, 7, 9)) 
+
+
+set.seed(1)
 
 rf_fit <- train(CLASS_ ~ .,
                 data = dem_train, 
@@ -624,11 +908,11 @@ rf_fit <- train(CLASS_ ~ .,
                 metric = "ROC")
 rf_fit
 plot(rf_fit)
+
 ```
 
 ```{r}
 rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
-
 
 rf_final <- train(CLASS_ ~., 
                   
@@ -640,13 +924,11 @@ rf_final <- train(CLASS_ ~.,
                   
                   metric = "ROC",
                   
-                  tuneGrid = data.frame(.mtry = 17,
+                  tuneGrid = data.frame(.mtry = 15,
                                         
-                                        .min.node.size = 5,
+                                        .min.node.size = 9,
                                         
                                         .splitrule = "gini"))
-                  
-
 
 # Training set results
 
@@ -664,7 +946,6 @@ rf_test_results <- confusionMatrix(dem_test$CLASS_, rf_pred_test)
 
 rf_test_results
 ```
-
 
 ### ARTIFICIAL NEURAL NETWORK
 
@@ -702,4 +983,3 @@ dnn_pred_test <- predict(dnn_final, newdata = dem_test)
 print(confusionMatrix(dnn_pred_train, dem_train$CLASS_))
 print(confusionMatrix(dnn_pred_test, dem_test$CLASS_))
 ```
-
