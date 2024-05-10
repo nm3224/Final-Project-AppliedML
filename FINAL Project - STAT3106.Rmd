@@ -84,7 +84,7 @@ GSS_dem[GSS_dem <= -70] <- NA
 
 sum(GSS_dem < 0, na.rm = TRUE)
 
-GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT, CONINC, CONRINC))
+GSS_dem <- GSS_dem %>% select(!c(MNTLHLTH, STRESS, MATESEX, PAIDSEX, SEXFREQ, BALLOT, CONINC, CONRINC, DEGREE, PADEG, MADEG, SPDEG, PHONE, PAPRES10))
 
 
 # adding ethnicity variables
@@ -141,7 +141,7 @@ GSS_opin[GSS_opin <= -70] <- NA
 
 sum(GSS_opin < 0, na.rm = TRUE)
 
-GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT))
+GSS_opin <- GSS_opin %>% select(!c(TAX, WRKEARN, WRKENJOY, BALLOT, ABSINGLE, PARTYID))
 
 ```
 
@@ -174,7 +174,7 @@ GSS_misc$NUMMEN[subset_rows] <- NA
 sum(GSS_misc < 0, na.rm = TRUE)
 
 GSS_misc <- GSS_misc  %>%
-  select(!BALLOT)
+  select(!c(BALLOT, HEALTH, FUND16, POLVIEWS))
 
 ```
 
@@ -214,19 +214,19 @@ dem_clean <- GSS_dem %>% select(all_of(columns_to_keep))
 # removing rows with NAs in the target feature
 dem_clean <- dem_clean %>% filter(is.na(CLASS_) != T)
 
-# removing rows with NA in more than 30% of columns
+# removing rows with NA in more than 33% of columns
 na_row_dem <- rowSums(is.na(dem_clean))
 
-threshold <- ncol(dem_clean) * 0.3
+threshold <- ncol(dem_clean) * 0.33
 
 dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
 
-# removing variables with more than 40% NA
+# removing variables with more than 45% NA
 na_column_dem <- data.frame(missing = colSums(is.na(dem_clean)))
 na_column_dem$missing <- as.numeric(na_column_dem$missing)
 
-columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.40 * nrow(dem_clean))   
+columns_to_elim <- na_column_dem %>% filter(na_column_dem$missing >= 0.45 * nrow(dem_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(dem_clean), columns_to_elim)
@@ -250,11 +250,11 @@ dem_clean <- dem_clean[na_row_dem <= threshold, ]
 # keeping only those observations that are in dem_clean
 opin_clean <- semi_join(GSS_opin, dem_clean, by = c("YEAR", "ID_")) 
 
-# removing variables with more than 53% NA
+# removing variables with more than 51% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.53 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.51 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
@@ -264,25 +264,25 @@ opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
 # removing rows with NA in more than 30% of columns
 na_row_opin <- rowSums(is.na(opin_clean))
 
-threshold <- ncol(opin_clean) * 0.3
+threshold <- ncol(opin_clean) * 0.30
 
 opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
 
-# removing variables with more than 30% NA
+# removing variables with more than 25% NA
 na_column_opin <- data.frame(missing = colSums(is.na(opin_clean)))
 na_column_opin$missing <- as.numeric(na_column_opin$missing)
 
-columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.3 * nrow(opin_clean))   
+columns_to_elim <- na_column_opin %>% filter(na_column_opin$missing >= 0.25 * nrow(opin_clean))   
 columns_to_elim <- row.names(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(opin_clean), columns_to_elim)
 opin_clean <- opin_clean %>% select(all_of(columns_to_keep))
 
-# removing rows with NA in more than 15% of columns
+# removing rows with NA in more than 20% of columns
 na_row_opin <- rowSums(is.na(opin_clean))
 
-threshold <- ncol(opin_clean) * 0.15
+threshold <- ncol(opin_clean) * 0.2
 
 opin_clean <- opin_clean[na_row_opin <= threshold, ]
 
@@ -313,10 +313,10 @@ columns_to_keep <- setdiff(colnames(misc_clean), columns_to_elim)
 misc_clean <- misc_clean %>% select(all_of(columns_to_keep))
 
 
-# removing rows with NA in more than 15% of columns
+# removing rows with NA in more than 20% of columns
 na_row_misc <- rowSums(is.na(misc_clean))
 
-threshold <- ncol(misc_clean) * 0.15
+threshold <- ncol(misc_clean) * 0.2
 
 misc_clean <- misc_clean[na_row_misc <= threshold, ]
 
@@ -331,7 +331,7 @@ opin_clean <- semi_join(opin_clean, misc_clean, by = c("YEAR", "ID_"))
 # removing rows with NA in more than 10% of columns
 na_row_dem <- rowSums(is.na(dem_clean))
 
-threshold <- ncol(dem_clean) * 0.1
+threshold <- ncol(dem_clean) * 0.10
 
 dem_clean <- dem_clean[na_row_dem <= threshold, ]
 
@@ -346,25 +346,25 @@ columns <- c(columns, colnames(misc_clean))
 columns <- unique(columns)
 
 all_clean <- left_join(dem_clean, opin_clean, by = c("YEAR", "ID_", "CLASS_"))
-all_clean <- left_join(all_clean, misc_clean, by = c("YEAR", "ID_", "CLASS_", "PARTYID", "POLVIEWS", "FUND16", "HEALTH", "PHONE")) 
+all_clean <- left_join(all_clean, misc_clean, by = c("YEAR", "ID_", "CLASS_")) 
 
 setdiff(colnames(all_clean), columns)
 setdiff(columns, colnames(all_clean))
 
-# removing variables with more than 30% overall NA
+# removing variables with more than 25% overall NA
 na_column_all <- data.frame(missing = colSums(is.na(all_clean)))
 na_column_all$missing <- as.numeric(na_column_all$missing)
 
-columns_to_elim <- na_column_all %>% filter(na_column_all$missing >= 0.3 * nrow(all_clean))   
+columns_to_elim <- na_column_all %>% filter(na_column_all$missing >= 0.25 * nrow(all_clean))   
 columns_to_elim <- rownames(columns_to_elim)
 columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(all_clean), columns_to_elim)
 all_clean <- all_clean %>% select(all_of(columns_to_keep))
 
-# removing rows with NA in more than 20% of all columns
+# removing rows with NA in more than 10% of all columns
 na_row_all <- rowSums(is.na(all_clean))
 
-threshold <- ncol(all_clean) * 0.2
+threshold <- ncol(all_clean) * 0.10
 
 all_clean <- all_clean[na_row_all <= threshold, ]
 
@@ -382,7 +382,7 @@ columns_misc <- intersect(colnames(misc_clean), colnames(all_clean))
 binary_cols <- sapply(all_clean, function(x) length(unique(na.omit(x))) == 2)
 binary_cols <- names(binary_cols[binary_cols])
 
-sapply(all_clean[,binary_cols], unique)
+unique(sapply(all_clean[,binary_cols], unique))
 
 onetwo_cols <- sapply(all_clean, function(x) all(na.omit(x) %in% c(1, 2)))
 onetwo_cols <- names(onetwo_cols[onetwo_cols])
@@ -396,14 +396,24 @@ fourfive_cols
 
 all_clean <- all_clean %>% mutate(across(all_of(fourfive_cols), ~ 5 - .x))
 
+threefour_cols <- sapply(all_clean, function(x) all(na.omit(x) %in% c(3, 4)))
+threefour_cols <- names(threefour_cols[threefour_cols])
+threefour_cols
+
+all_clean <- all_clean %>% mutate(across(all_of(threefour_cols), ~ 4 - .x))
+
 all_clean <- all_clean %>%
   mutate(across(all_of(binary_cols), as.integer))
 
-all_clean <- all_clean %>%
-  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY", "DEGREE", "SPDEG", "PADEG", "MADEG", "ETH1")), as.character))
+factor_candidates <- sapply(all_clean, function(x) length(unique(na.omit(x))) < 5)
+factor_candidates <- names(factor_candidates[factor_candidates])
+factor_candidates <- setdiff(factor_candidates, binary_cols)
 
 all_clean <- all_clean %>%
-  mutate(across(all_of(c("WRKSTAT", "OCC10", "INDUS10", "MARITAL", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RACE", "RES16", "REG16", "MOBILE16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "FUND16", "SPREL", "HEALTH", "OWNGUN", "PHONE", "ID_", "CLASS_", "UNION_", "PARTYID", "NATROAD", "NATSOC", "NATMASS", "NATPARK", "COURTS", "HELPFUL", "FAIR", "TRUST", "GETAHEAD", "XMARSEX", "HOMOSEX", "TAX", "FUND", "HAPPY", "SATJOB", "LIFE", "SATFIN", "FINALTER", "PISTOL", "SHOTGUN", "RIFLE", "CONFINAN", "CONBUS", "CONCLERG", "CONEDUC", "CONFED", "CONLABOR", "CONPRESS", "CONMEDIC", "CONTV", "CONJUDGE", "CONSCI", "CONLEGIS", "CONARMY", "DEGREE", "SPDEG", "PADEG", "MADEG", "ETH1")), factor))
+  mutate(across(all_of(c(factor_candidates, "WRKSTAT", "OCC10", "INDUS10", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RES16", "REG16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "SPREL", "PHONE", "ID_", "PARTYID", "ETH1")), as.character))
+
+all_clean <- all_clean %>%
+  mutate(across(all_of(c(factor_candidates, "WRKSTAT", "OCC10", "INDUS10", "SPWRKSTA", "SPOCC10", "SPIND10", "PAOCC10", "RES16", "REG16", "FAMILY16", "PARBORN", "GRANBORN", "REGION", "RELIG", "RELIG16", "SPREL", "PHONE", "ID_", "PARTYID", "ETH1")), factor))
 
 all_clean <- all_clean %>% mutate(OCC10 = as.factor(substr(as.character(OCC10), 1, 2)), 
                                   PAOCC10 = as.factor(substr(as.character(PAOCC10), 1, 2)), 
@@ -412,6 +422,7 @@ all_clean <- all_clean %>% mutate(OCC10 = as.factor(substr(as.character(OCC10), 
                                   SPIND10 = as.factor(substr(as.character(SPOCC10), 1, 2)))
 
 all_clean <- all_clean %>% filter(is.na(CLASS_) != T)
+all_clean <- all_clean %>% filter(YEAR < 2020)
 
 dem_clean <- all_clean %>% select(all_of(columns_dem))
 opin_clean <- all_clean %>% select(all_of(columns_opin))
@@ -430,6 +441,9 @@ mean(na_column_opin$missing) / nrow(opin_clean)
 na_column_misc <- data.frame(missing = colSums(is.na(misc_clean)))
 mean(na_column_misc$missing) / nrow(misc_clean)
 
+na_column_all <- data.frame(missing = colSums(is.na(all_clean)))
+mean(na_column_all$missing) / nrow(all_clean)
+
 ```
 
 
@@ -442,15 +456,16 @@ length(levels(all_clean$OCC10))
 length(levels(all_clean$SPOCC10))
 
 sum(is.na(all_clean)) / length(unlist(all_clean))
-colSums(is.na(all_clean))
+na_by_col <- 100*(colSums(is.na(all_clean)) / nrow(all_clean))
+na_by_col[na_by_col > 10]
 
 na_count_per_row <- rowSums(is.na(all_clean))
 na_count_per_row <- as.factor(na_count_per_row)
 summary(na_count_per_row)
 
-dem1 <- dem_clean %>% select(1:22)
-dem2 <- dem_clean %>% select(23:45)
-dem3 <- dem_clean %>% select(46:69)
+dem1 <- dem_clean %>% select(1:21)
+dem2 <- dem_clean %>% select(22:43)
+dem3 <- dem_clean %>% select(44:64)
 vis_dat(dem1)
 vis_dat(dem2)
 vis_dat(dem3)
@@ -458,7 +473,7 @@ vis_dat(dem3)
 
 opin1 <- opin_clean %>% select(1:21)
 opin2 <- opin_clean %>% select(22:43)
-opin3 <- opin_clean %>% select(44:68)
+opin3 <- opin_clean %>% select(44:65)
 vis_dat(opin1)
 vis_dat(opin2)
 vis_dat(opin3)
@@ -481,9 +496,9 @@ cor_matrix <- cor(dem_clean[, numeric], use = "pairwise.complete.obs")
 cor_matrix <- as.data.frame(cor_matrix)
 
 condition_met <- cor_matrix > 0.6 | cor_matrix < -0.6
-rows_to_keep <- rowSums(condition_met) != 1
+rows_to_keep <- rowSums(condition_met, na.rm = T) != 1
 cor_matrix <- cor_matrix[rows_to_keep, ]
-cols_to_keep <- colSums(condition_met) != 1
+cols_to_keep <- colSums(condition_met, na.rm = T) != 1
 cor_matrix <- cor_matrix[, cols_to_keep]
 
 cor_matrix <- as.matrix(cor_matrix)
@@ -496,7 +511,7 @@ corrplot(cor_matrix,
          tl.srt = 45,  # Rotation of text labels
          addCoef.col = "black")  # Add coefficient colors
 
-#
+# after this step we removed the variables CONINC (kept REALINC), CONRINC (kept REALRINC), ETHNIC (and kept ETH1), DEGREE (and kept EDUC),  PADEG (keeping PAEDUC), MADEG (kept MAEDUC), SPDEG (kept SPEDUC), PAPRES10 (keeping PASEI)
 
 numeric <- sapply(opin_clean, is.numeric)
 numeric <- numeric[numeric == T]
@@ -522,7 +537,8 @@ corrplot(cor_matrix,
          tl.srt = 45,  # Rotation of text labels
          addCoef.col = "black")  # Add coefficient colors
 
-#
+# after this step we removed ABSINGLE (keeping ABPOOR)
+
 
 numeric <- sapply(misc_clean, is.numeric)
 numeric <- numeric[numeric == T]
@@ -549,9 +565,9 @@ cor_matrix <- cor(all_clean[, numeric], use = "pairwise.complete.obs")
 cor_matrix <- as.data.frame(cor_matrix)
 
 condition_met <- cor_matrix > 0.7 | cor_matrix < -0.7
-rows_to_keep <- rowSums(condition_met) != 1
+rows_to_keep <- rowSums(condition_met, na.rm = T) != 1
 cor_matrix <- cor_matrix[rows_to_keep, ]
-cols_to_keep <- colSums(condition_met) != 1
+cols_to_keep <- colSums(condition_met, na.rm = T) != 1
 cor_matrix <- cor_matrix[, cols_to_keep]
 
 cor_matrix <- as.matrix(cor_matrix)
@@ -706,7 +722,7 @@ colnames(eth1) <- c("count")
 
 eth1 %>%
   arrange(desc(count)) %>%
-  slice_head(n = 20)
+  slice_head(n = 16)
 
 frequency <- data.frame(ethnic = all_clean$ETH1)
 frequency <- frequency %>% mutate(ethnic = case_when(
@@ -728,7 +744,7 @@ frequency <- frequency %>% mutate(ethnic = case_when(
   T ~ "Other"
 ))
 
-frequency$ethnic <- factor(frequency$ethnic, ordered = T, levels = c("German", "English / Welsh", "Irish", "Italian", "African", "Scots", "Mexican", "NativeAm", "French", "Polish", "Russian", "Swede", "Norweg", "Dutch", "Other"))
+frequency$ethnic <- factor(frequency$ethnic, ordered = T, levels = c("German", "English / Welsh", "Irish", "Italian", "African", "Mexican", "Scots", "NativeAm", "French", "Polish", "Norweg", "Swede", "Russian", "Dutch", "Other"))
 frequency <- na.omit(frequency)
 
 frequency <- frequency %>%
@@ -765,33 +781,81 @@ year <- ggplot(all_clean, aes(x = YEAR)) +
   geom_histogram(
     binwidth = 2,
     na.rm = T,
-    colour = "grey90",
-    fill = "grey40", 
+    colour = "grey50",
+    fill = "mistyrose2", 
     alpha = 0.9
   ) +
   ggtitle("Year of Interview") +
-  scale_x_continuous(breaks = seq(1980, 2020, by = 5)) +
+  scale_x_continuous(breaks = c(seq(1985, 2020, by = 5))) +
+  coord_cartesian(xlim = c(1983, 2019)) +
   theme_minimal() +
-  theme(plot.title = element_text(hjust = 0.5), axis.title.y = element_blank())
+  theme(plot.title = element_text(hjust = 0.5), axis.title.x = element_blank())
 
 year
 
 ```
 
 
-#### DATA SPLITTING
+### DATA SPLITTING
 
 ```{r}
 remove <- ls()
-remove <- remove[!remove %in% c("all_clean", "dem_clean", "opin_clean", "misc_clean")]
+remove <- remove[!remove %in% c("all_clean", "dem_clean", "opin_clean", "misc_clean", "columns_dem", "columns_opin", "columns_misc", "columns")]
 rm(list = remove)
 
-levels(dem_clean$CLASS_) <- c("L1", "L2", "L3", "L4")
+
+levels(all_clean$CLASS_) <- c("L1", "L2", "L3", "L4")
+
+all_clean <- all_clean %>% relocate(all_of(columns_dem), .before = everything()) %>% relocate(all_of(columns_opin), .after = tail(columns_dem, n=1)) %>% relocate(all_of(columns_misc), .after = tail(columns_opin, n=1)) %>% relocate(all_of(c("ID_", "YEAR", "CLASS_")), .before = everything())
 
 set.seed(1)
-index <- createDataPartition(dem_clean$CLASS_, p = 0.7, list = FALSE)
-dem_train <- dem_clean[index, ]
-dem_test <- dem_clean[-index, ]
+split <- initial_split(all_clean, prop = 0.7, strata = "CLASS_")
+all_train <- training(split)
+all_test <- testing(split)
+
+```
+
+
+### Pre-Processing
+
+##### all vars
+
+```{r}
+
+blueprint <- recipe(CLASS_ ~ ., data = all_train) %>%
+  
+  step_string2factor(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors()) %>%
+  
+  step_impute_knn(all_predictors()) %>%
+  
+  step_other(all_nominal_predictors(),
+             threshold = 0.01,
+             other = "Other") %>%
+  
+  step_center(all_numeric_predictors()) %>%
+  
+  step_scale(all_numeric_predictors()) %>%
+  
+  step_dummy(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors(), freq_cut = 30, unique_cut = 20)
+
+
+blueprint_prep <- prep(blueprint, training = all_train)
+train <- bake(blueprint_prep, new_data = all_train)
+test <- bake(blueprint_prep, new_data = all_test)
+
+```
+
+
+#### demographic vars
+
+```{r}
+
+dem_train <- all_train %>% select(all_of(columns_dem))
+dem_test <- all_test %>% select(all_of(columns_dem))
 
 blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
   
@@ -817,14 +881,84 @@ blueprint <- recipe(CLASS_ ~ ., data = dem_train) %>%
 blueprint_prep <- prep(blueprint, training = dem_train)
 dem_train <- bake(blueprint_prep, new_data = dem_train)
 dem_test <- bake(blueprint_prep, new_data = dem_test)
-
-nearZeroVar(dem_test)
 ```
 
 
-### XG BOOST
+#### opin vars
 
 ```{r}
+
+opin_train <- all_train %>% select(all_of(columns_opin))
+opin_test <- all_test %>% select(all_of(columns_opin))
+
+blueprint <- recipe(CLASS_ ~ ., data = opin_train) %>%
+  
+  step_string2factor(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors()) %>%
+  
+  step_impute_knn(all_predictors()) %>%
+  
+  step_other(all_nominal_predictors(),
+             threshold = 0.01,
+             other = "Other") %>%
+  
+  step_center(all_numeric_predictors()) %>%
+  
+  step_scale(all_numeric_predictors()) %>%
+  
+  step_dummy(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors(), freq_cut = 30, unique_cut = 20)
+
+
+blueprint_prep <- prep(blueprint, training = opin_train)
+opin_train <- bake(blueprint_prep, new_data = opin_train)
+opin_test <- bake(blueprint_prep, new_data = opin_test)
+```
+
+
+#### miscellaneous vars
+
+```{r}
+
+misc_train <- all_train %>% select(all_of(columns_misc))
+misc_test <- all_test %>% select(all_of(columns_misc))
+
+blueprint <- recipe(CLASS_ ~ ., data = misc_train) %>%
+  
+  step_string2factor(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors()) %>%
+  
+  step_impute_knn(all_predictors()) %>%
+  
+  step_other(all_nominal_predictors(),
+             threshold = 0.01,
+             other = "Other") %>%
+  
+  step_center(all_numeric_predictors()) %>%
+  
+  step_scale(all_numeric_predictors()) %>%
+  
+  step_dummy(all_nominal_predictors()) %>%
+  
+  step_nzv(all_predictors(), freq_cut = 30, unique_cut = 20)
+
+
+blueprint_prep <- prep(blueprint, training = misc_train)
+misc_train <- bake(blueprint_prep, new_data = misc_train)
+misc_test <- bake(blueprint_prep, new_data = misc_test)
+```
+
+
+
+## XG BOOST
+
+
+#### demographic variables
+
+```{r, warning=FALSE}
 resample <- trainControl(method = "cv",
                          number = 5,
                          classProbs = TRUE,
@@ -838,6 +972,7 @@ hyper_grid <- expand.grid(nrounds = c(100, 150),
                           gamma = 0,
                           colsample_bytree = 1)
 set.seed(1)
+
 suppressWarnings(
   xg_fit <- train(
     CLASS_ ~ .,
@@ -849,6 +984,7 @@ suppressWarnings(
     metric = "ROC"
   )
 )
+
 xg_fit
 
 plot(xg_fit)
@@ -862,14 +998,16 @@ xg_final_fit <- train(CLASS_ ~ .,
                 method = "xgbTree",
                 verbose = FALSE,
                 trControl = xg_control_final, 
-                tuneGrid = data.frame(nrounds = 150,    #ADJUST BASED ON ABOVE RESULTS
+                tuneGrid = data.frame(nrounds = 150,    
                           max_depth = 4,   
                           eta = 0.05,   
-                          min_child_weight = 5,
-                          subsample = 0.6,  
+                          min_child_weight = 10,
+                          subsample = 0.4,  
                           gamma = 0,
                           colsample_bytree = 1),
-                metric = "ROC")
+                metric = "ROC", 
+                importance = "impurity")
+
 
 # Training set results
 
@@ -879,6 +1017,7 @@ xg_train_results <- confusionMatrix(dem_train$CLASS_, xg_pred_train)
 
 xg_train_results
 
+
 # Test set results
 
 xg_pred_test <- predict(xg_final_fit, newdata = dem_test)
@@ -886,12 +1025,177 @@ xg_pred_test <- predict(xg_final_fit, newdata = dem_test)
 xg_test_results <- confusionMatrix(dem_test$CLASS_, xg_pred_test)
 
 xg_test_results
+
+
+# Feature importance
+
+vip(xg_final_fit, num_features = 20)
+
 ```
 
-### RANDOM FOREST 
+
+#### opinion variables
+
+```{r, warning=FALSE}
+resample <- trainControl(method = "cv",
+                         number = 5,
+                         classProbs = TRUE,
+                         summaryFunction = multiClassSummary) 
+
+hyper_grid <- expand.grid(nrounds = c(100, 150),   
+                          max_depth = c(4, 6), 
+                          eta = c(0.05, 0.1),    
+                          min_child_weight = c(5, 10), 
+                          subsample = c(0.4, 0.6), 
+                          gamma = 0,
+                          colsample_bytree = 1)
+set.seed(1)
+
+suppressWarnings(
+  xg_fit <- train(
+    CLASS_ ~ .,
+    data = opin_train,
+    method = "xgbTree",
+    verbose = FALSE,
+    trControl = resample,
+    tuneGrid = hyper_grid,
+    metric = "ROC"
+  )
+)
+
+xg_fit
+
+plot(xg_fit)
+```
+
 
 ```{r}
-rf_resamp <- trainControl(method = "boot", number = 15, classProbs = TRUE, summaryFunction = multiClassSummary)
+xg_control_final <- trainControl(method = "none", classProbs = TRUE)
+
+xg_final_fit <- train(CLASS_ ~ .,
+                data = opin_train, 
+                method = "xgbTree",
+                verbose = FALSE,
+                trControl = xg_control_final, 
+                tuneGrid = data.frame(nrounds = 150,    
+                          max_depth = 4,   
+                          eta = 0.05,   
+                          min_child_weight = 10,
+                          subsample = 0.6,  
+                          gamma = 0,
+                          colsample_bytree = 1),
+                metric = "ROC", 
+                importance = "impurity")
+
+
+# Training set results
+
+xg_pred_train <- predict(xg_final_fit, newdata = opin_train)
+
+xg_train_results <- confusionMatrix(opin_train$CLASS_, xg_pred_train)
+
+xg_train_results
+
+
+# Test set results
+
+xg_pred_test <- predict(xg_final_fit, newdata = opin_test)
+
+xg_test_results <- confusionMatrix(opin_test$CLASS_, xg_pred_test)
+
+xg_test_results
+
+
+# Feature importance
+
+vip(xg_final_fit, num_features = 20)
+```
+
+
+#### all variables 
+
+```{r, warning=FALSE}
+resample <- trainControl(method = "cv",
+                         number = 5,
+                         classProbs = TRUE,
+                         summaryFunction = multiClassSummary) 
+
+hyper_grid <- expand.grid(nrounds = c(100, 150),   
+                          max_depth = c(4, 6), 
+                          eta = c(0.05, 0.1),    
+                          min_child_weight = c(5, 10), 
+                          subsample = c(0.4, 0.6), 
+                          gamma = 0,
+                          colsample_bytree = 1)
+set.seed(1)
+
+suppressWarnings(
+  xg_fit <- train(
+    CLASS_ ~ .,
+    data = train,
+    method = "xgbTree",
+    verbose = FALSE,
+    trControl = resample,
+    tuneGrid = hyper_grid,
+    metric = "ROC"
+  )
+)
+
+xg_fit
+
+plot(xg_fit)
+```
+
+
+```{r}
+xg_control_final <- trainControl(method = "none", classProbs = TRUE)
+
+xg_final_fit <- train(CLASS_ ~ .,
+                data = train, 
+                method = "xgbTree",
+                verbose = FALSE,
+                trControl = xg_control_final, 
+                tuneGrid = data.frame(nrounds = 150,    
+                          max_depth = 4,   
+                          eta = 0.05,   
+                          min_child_weight = 5,
+                          subsample = 0.6,  
+                          gamma = 0,
+                          colsample_bytree = 1),
+                metric = "ROC", 
+                importance = "impurity")
+
+
+# Training set results
+
+xg_pred_train <- predict(xg_final_fit, newdata = train)
+
+xg_train_results <- confusionMatrix(train$CLASS_, xg_pred_train)
+
+xg_train_results
+
+
+# Test set results
+
+xg_pred_test <- predict(xg_final_fit, newdata = test)
+
+xg_test_results <- confusionMatrix(test$CLASS_, xg_pred_test)
+
+xg_test_results
+
+
+# Feature importance
+
+vip(xg_final_fit, num_features = 20)
+```
+
+
+## RANDOM FOREST 
+
+#### demographic variables
+
+```{r}
+rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
 hyper_grid <- expand.grid(mtry = c(13, 15, 17),
                           splitrule = c("gini", "extratrees"),
                           min.node.size = c(5, 7, 9)) 
@@ -924,11 +1228,13 @@ rf_final <- train(CLASS_ ~.,
                   
                   metric = "ROC",
                   
-                  tuneGrid = data.frame(.mtry = 15,
+                  tuneGrid = data.frame(.mtry = 17,
                                         
-                                        .min.node.size = 9,
+                                        .min.node.size = 7,
                                         
-                                        .splitrule = "gini"))
+                                        .splitrule = "gini"), 
+                  
+                  importance = "impurity")
 
 # Training set results
 
@@ -945,7 +1251,154 @@ rf_pred_test <- predict(rf_final, newdata = dem_test)
 rf_test_results <- confusionMatrix(dem_test$CLASS_, rf_pred_test)
 
 rf_test_results
+
+
+# Feature importance
+
+vip(rf_final, num_features = 20)
 ```
+
+
+#### opinion variables
+
+```{r}
+rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
+hyper_grid <- expand.grid(mtry = c(13, 15, 17),
+                          splitrule = c("gini", "extratrees"),
+                          min.node.size = c(5, 7, 9)) 
+
+
+set.seed(1)
+
+rf_fit <- train(CLASS_ ~ .,
+                data = opin_train, 
+                method = "ranger",
+                verbose = FALSE,
+                trControl = rf_resamp, 
+                tuneGrid = hyper_grid,
+                metric = "ROC")
+rf_fit
+plot(rf_fit)
+
+```
+
+
+```{r}
+rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
+
+rf_final <- train(CLASS_ ~., 
+                  
+                  data = opin_train,
+                  
+                  method = "ranger",
+                  
+                  trControl = rf_fit_final,
+                  
+                  metric = "ROC",
+                  
+                  tuneGrid = data.frame(.mtry = 13,
+                                        
+                                        .min.node.size = 7,
+                                        
+                                        .splitrule = "gini"), 
+                  
+                  importance = "impurity")
+
+
+# Training set results
+
+rf_pred_train <- predict(rf_final, newdata = opin_train)
+
+rf_train_results <- confusionMatrix(opin_train$CLASS_, rf_pred_train)
+
+rf_train_results
+
+
+# Test set results
+
+rf_pred_test <- predict(rf_final, newdata = opin_test)
+
+rf_test_results <- confusionMatrix(opin_test$CLASS_, rf_pred_test)
+
+rf_test_results
+
+
+# Feature importance
+
+vip(rf_final, num_features = 20)
+```
+
+
+#### all variables
+
+```{r}
+rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
+hyper_grid <- expand.grid(mtry = c(13, 15, 17),
+                          splitrule = c("gini", "extratrees"),
+                          min.node.size = c(5, 7, 9)) 
+
+
+set.seed(1)
+
+rf_fit <- train(CLASS_ ~ .,
+                data = train, 
+                method = "ranger",
+                verbose = FALSE,
+                trControl = rf_resamp, 
+                tuneGrid = hyper_grid,
+                metric = "ROC")
+rf_fit
+plot(rf_fit)
+
+```
+
+
+```{r}
+rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
+
+rf_final <- train(CLASS_ ~., 
+                  
+                  data = train,
+                  
+                  method = "ranger",
+                  
+                  trControl = rf_fit_final,
+                  
+                  metric = "ROC",
+                  
+                  tuneGrid = data.frame(.mtry = 17,
+                                        
+                                        .min.node.size = 7,
+                                        
+                                        .splitrule = "gini"), 
+                  
+                  importance = "impurity")
+
+# Training set results
+
+rf_pred_train <- predict(rf_final, newdata = train)
+
+rf_train_results <- confusionMatrix(train$CLASS_, rf_pred_train)
+
+rf_train_results
+
+# Test set results
+
+rf_pred_test <- predict(rf_final, newdata = test)
+
+rf_test_results <- confusionMatrix(test$CLASS_, rf_pred_test)
+
+rf_test_results
+
+
+# Feature importance
+
+vip(rf_final, num_features = 20)
+
+```
+
+
+
 
 ### ARTIFICIAL NEURAL NETWORK
 
