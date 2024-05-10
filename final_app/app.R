@@ -11,32 +11,47 @@ library(ggExtra)
 library(data.table)
 
 
-data_initial <- read.csv("data/all_clean.csv", header = TRUE)
+data_all <- read.csv("data/all_clean.csv", header = TRUE)
+data_dem <- read.csv("data/dem_clean.csv", header = TRUE)
+data_misc <- read.csv("data/misc_clean.csv", header = TRUE)
+data_opin <- read.csv("data/opin_clean.csv", header = TRUE)
 
 
 # Define UI for application
 
 ui <- fluidPage(
   
-  titlePanel("My First Shiny Application"),
+  titlePanel("Predicting Social Class Based on Differing Variables"),
   
   navbarPage(
     
-    title = ("STAT 3106"),
+    title = ("Project Overview"),
     
     theme = shinytheme("flatly"),
     
     tabPanel("First Panel", icon = icon("info-circle"),
              
-             titlePanel("Overview: User Instructions"),
+             titlePanel("Predicting Social Class Based on Differing Variables"),
              
              mainPanel(
                
-               helpText("STAT 3106: Applied Machine Learning - Final Project ......"))
+               HTML("STAT 3106: Applied Machine Learning - Final Project:<br><br>
+               
+                        We decided early on that we would all be interested in a question of the social sciences, 
+                        namely in exploring how demographics relate to political opinions and identity. 
+                        Because our interest is in understanding these relationships, not only in predicting them, we decided we also wanted to implement interpretable machine learning techniques. 
+                        After looking through sites like kaggle and data.gov, we settled on working with data from the General Social Survey (GSS), as it presents extraordinarily extensive data on both demographics and opinions.<br><br>
+                        
+                        The dataset we started working with was the GSS cumulative dataset, including all variables ever collected from 1972-2022. 
+                        With over 72,000 observations on almost 6,700 variables, this dataset was extraordinarily large.<br><br> 
+                        
+                        Final Research Question: How well can each of our chosen models (XGBoost, Random Forest, and Artificial Neural Network) 
+                        predict an individual's independently defined subjective social class based on 4 data subsets: 1) solely variables such as demographic information (ex. income, race, occupation); 2) solely variables such as opinion data (ex. political opinions); 4) solely variables pertaining to (fill in misc?); 3) all variables?
+"))
              
     ),
     
-    tabPanel("Second Panel", icon = icon("folder-open"),
+    tabPanel("Our Data", icon = icon("folder-open"),
              
              titlePanel("Upload Data"),
              
@@ -44,7 +59,7 @@ ui <- fluidPage(
                
                sidebarPanel(
                  
-                 selectInput("dataset", "Dataset:", choices = c("Car Seats", "Upload your own file")),
+                 selectInput("dataset", "Dataset:", choices = c("All_Data" = "data_all", "Demographic_Data" = "data_dem", "Opinion_Data" = "data_opin", "Misc_Data" = "data_misc", "Upload your own file")),
                  
                  conditionalPanel(condition = "input.dataset == 'Upload your own file'",
                                   
@@ -71,7 +86,7 @@ ui <- fluidPage(
              
     ),
     
-    tabPanel("Third Panel",
+    tabPanel("Exploratory Visuals",
              
              titlePanel("Scatterplot"),
              
@@ -115,7 +130,7 @@ ui <- fluidPage(
     
     
     
-    tabPanel("Fourth Panel",
+    tabPanel("Models",
              
              titlePanel("Histogram"),
              
@@ -188,7 +203,7 @@ server <- function(input, output, session) {
       
     } else {
       
-      return(data_initial)
+      return(data_all)
     } 
     
   })
