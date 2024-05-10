@@ -21,7 +21,7 @@ data_opin <- read.csv("data/opin_clean.csv", header = TRUE)
 
 ui <- fluidPage(
   
-  titlePanel("Predicting Social Class Based on Differing Variables"),
+  titlePanel("Final Project"),
   
   navbarPage(
     
@@ -29,7 +29,7 @@ ui <- fluidPage(
     
     theme = shinytheme("flatly"),
     
-    tabPanel("First Panel", icon = icon("info-circle"),
+    tabPanel("Project Details", icon = icon("info-circle"),
              
              titlePanel("Predicting Social Class Based on Differing Variables"),
              
