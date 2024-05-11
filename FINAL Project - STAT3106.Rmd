@@ -958,7 +958,7 @@ xg_final_fit <- caret::train(CLASS_ ~ .,
                           min_child_weight = 10,
                           subsample = 0.6,  
                           gamma = 0,
-                          colsample_bytree = 1),
+                          colsample_bytree = 0.9),
                 metric = "ROC")
 
 
@@ -1165,7 +1165,8 @@ rf_fit <- caret::train(CLASS_ ~ .,
                 tuneGrid = hyper_grid,
                 metric = "ROC", 
                 num.trees = 700)
-rf_fit$bestTune
+rf_fit
+
 plot(rf_fit)
 
 ```
@@ -1184,9 +1185,9 @@ rf_final <- caret::train(CLASS_ ~.,
                   
                   metric = "ROC",
                   
-                  tuneGrid = data.frame(.mtry = 17,
+                  tuneGrid = data.frame(.mtry = 14,
                                         
-                                        .min.node.size = 9,
+                                        .min.node.size = 7,
                                         
                                         .splitrule = "gini"), 
                   
