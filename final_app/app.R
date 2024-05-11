@@ -39,7 +39,10 @@ ui <- fluidPage(
                         With over 72,000 observations on almost 6,700 variables, this dataset was extraordinarily large.<br><br> 
                         
                         Final Research Question: How well can each of our chosen models (XGBoost, Random Forest, and Artificial Neural Network) 
-                        predict an individual's independently defined subjective social class based on 3 data subsets: 1) solely variables such as demographic information (ex. income, race, occupation); 2) solely variables such as opinion data (ex. political opinions); 3) both these variable datasets combined."))
+                        predict an individual's independently defined subjective social class based on 3 data subsets:<br><br> 
+                            1) solely variables such as demographic information (ex. income, race, occupation), <br><br> 
+                            2) solely variables such as opinion data (ex. political opinions), <br><br>
+                            3) both these variable datasets combined?"))
     ),
     tabPanel("Our Data", icon = icon("folder-open"),
              titlePanel("Upload Data"),
@@ -104,11 +107,6 @@ ui <- fluidPage(
     tabPanel("Model Analysis and Summary",
              sidebarLayout(
                sidebarPanel(
-                 selectInput("modelDataset", "Choose Dataset or Upload Your Own:", 
-                             choices = c("All Data" = "data_all", 
-                                         "Demographic Data" = "data_dem", 
-                                         "Opinion Data" = "data_opin",
-                                         "Upload Your Own File" = "upload")),
                  conditionalPanel(
                    condition = "input.modelDataset == 'upload'",
                    fileInput("uploadModelData", "Upload Dataset:", accept = c(".csv", ".xlsx"))
@@ -211,6 +209,9 @@ server <- function(input, output, session) {
     }
     data
   })
+  
+  
+  
 }
 
 # Run the application 
