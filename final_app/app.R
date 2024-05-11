@@ -11,6 +11,19 @@ library(ggExtra)
 library(data.table)
 
 library(caret)
+library(tidymodels)
+library(haven)
+library(visdat)
+library(plm)
+library(stringr)
+library(corrplot)
+library(cluster)     
+library(factoextra) 
+library(vip) 
+library(igraph)
+library(foreign)
+library(MLmetrics)
+library(RSNNS)
 
 # Loading data
 data_all <- read.csv("data/all_clean.csv", header = TRUE)
@@ -84,22 +97,20 @@ ui <- fluidPage(
     ),
     tabPanel("Pre-Processing", icon = icon("edit"),
              sidebarLayout(
-               sidebarPanel(
-                 selectInput("preprocess_dataset", "Choose Dataset or Upload Your Own:", 
-                             choices = c("All Data" = "data_all", 
-                                         "Demographic Data" = "data_dem", 
-                                         "Opinion Data" = "data_opin",
-                                         "Upload Your Own File" = "upload")),
-                 conditionalPanel(
-                   condition = "input.preprocess_dataset == 'upload'",
-                   fileInput("uploadData", "Upload Dataset:", accept = c(".csv", ".xlsx"))
-                 ),
-                 uiOutput("varSelectInput"),  # For selecting variables dynamically
-                 checkboxInput("removeNA", "Remove All NAs", value = FALSE),
-                 actionButton("applyPreprocess", "Apply Pre-processing", icon = icon("magic"))
+               sidebarPanel(conditionalPanel(
+                 condition = "input.preprocess_dataset == 'upload'",
+                 fileInput("uploadData", "Upload Dataset:", accept = c(".csv", ".xlsx"))
+               ),
+               uiOutput("varSelectInput"),  # For selecting variables dynamically
+               checkboxInput("removeNA", "Remove All NAs", value = FALSE),
+               actionButton("applyPreprocess", "Apply Pre-processing", icon = icon("magic"))
                ),
                mainPanel(
-                 dataTableOutput("preprocess_preview")
+                 tabsetPanel(
+                   tabPanel("Preview", dataTableOutput("preview")),
+                   tabPanel("Training Set Preview", dataTableOutput("train_preprocess_preview")),
+                   tabPanel("Testing Set Preview", dataTableOutput("test_preprocess_preview"))
+                 )
                )
              )
              ),
@@ -123,7 +134,17 @@ ui <- fluidPage(
                )
              )
     ),
-    tabPanel("Prediction Visuals")
+    tabPanel("Prediction Visuals",
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("plotType", "Select Plot Type",
+                             choices = c("Scatterplot", "Residual Plot"))
+               ),
+               mainPanel(
+                 plotOutput("predictionPlot")
+               )
+             )
+    )
     )
 )
 
@@ -206,24 +227,65 @@ server <- function(input, output, session) {
     head(split_data()$test_data)
   })
   
-  # Pre-processing data
+  # Function to preprocess data and output a preview
+  preprocess_data <- function(train_data, test_data) {
+    # Apply preprocessing steps using recipe to training data
+    blueprint <- recipe(CLASS_ ~ ., data = train_data) %>%
+      step_other(all_nominal_predictors(),
+                 threshold = 0.01,
+                 other = "Other") %>%
+      step_center(all_numeric_predictors()) %>%
+      step_scale(all_numeric_predictors()) %>%
+      step_dummy(all_nominal_predictors()) %>%
+      step_zv(all_predictors())
+    
+    preprocessed_train_data <- blueprint %>% prep() %>% bake(new_data = NULL)
+    
+    # Apply preprocessing steps using recipe to testing data
+    preprocessed_test_data <- blueprint %>% prep() %>% bake(new_data = test_data)
+    
+    # Return preprocessed training and testing data
+    list(train_data = head(preprocessed_train_data), test_data = head(preprocessed_test_data))
+  }
+  
+  # Preprocess data and output previews
   output$preprocess_preview <- renderDataTable({
-    # Your code for pre-processing data
-    # Example: Remove NA values if selected
-    if (input$removeNA) {
-      data <- na.omit(get(input$preprocess_dataset))
-    } else {
-      data <- get(input$preprocess_dataset)
+    if (!is.null(split_data()$train_data)) {
+      train_data <- split_data()$train_data
+      test_data <- split_data()$test_data
+      
+      # Preprocess data
+      preprocessed_data <- preprocess_data(train_data, test_data)
+      
+      # Return preprocessed training data
+      preprocessed_data$train_data
     }
-    data
+  })
+  
+  output$test_preprocess_preview <- renderDataTable({
+    if (!is.null(split_data()$train_data)) {
+      train_data <- split_data()$train_data
+      test_data <- split_data()$test_data
+      
+      # Preprocess data
+      preprocessed_data <- preprocess_data(train_data, test_data)
+      
+      # Return preprocessed testing data
+      preprocessed_data$test_data
+    }
   })
   
   # Train model based on the selected model
   trained_model <- eventReactive(input$loadModel, {
-    model <- switch(input$model,
+    model <- switch(input$selectedModel,
                     "rf" = rf,  
-                    "xg" = xg)
+                    "xgb" = xg)
     return(model)
+  }, ignoreNULL = TRUE)
+  
+  # Generate predictions
+  predictions <- reactive({
+    predict(trained_model(), newdata = input$split_data$test_data)
   })
   
   # Output model summary
@@ -231,6 +293,31 @@ server <- function(input, output, session) {
     summary(trained_model())
   })
   
+  # Update the selected_response reactive value when a response variable is selected
+  observe({
+    selected_response(input$split_variable)
+  })
+  
+  output$predictionPlot <- renderPlot({
+    if (input$plotType == "Scatterplot") {
+      # Scatterplot of actual vs predicted values
+      actual_vs_predicted <- data.frame(Actual = actual_values, Predicted = predicted_values)
+      ggplot(actual_vs_predicted, aes(x = Actual, y = Predicted)) +
+        geom_point() +
+        geom_abline(intercept = 0, slope = 1, color = "red") +
+        labs(title = "Actual vs. Predicted",
+             x = "Actual",
+             y = "Predicted")
+    } else if (input$plotType == "Residual Plot") {
+      # Residual plot
+      residuals <- actual_values - predicted_values
+      ggplot(data.frame(Residuals = residuals), aes(x = Residuals)) +
+        geom_histogram(binwidth = 0.5, fill = "skyblue", color = "black") +
+        labs(title = "Residuals Plot",
+             x = "Residuals",
+             y = "Frequency")
+    }
+  })
 }
 
 # Run the application 
