@@ -1,6 +1,7 @@
 # Final-Project-AppliedML
 
 Contributors: Noreen Mayat, Marlon Kegel and Hailey Shewprasad
+
 We decided early on that we would all be interested in a question of the social sciences, namely in exploring how demographics relate to political opinions and identity. 
 Because our interest is in understanding these relationships, not only in predicting them, we decided we also wanted to implement interpretable machine learning techniques. 
 After looking through sites like kaggle and data.gov, we settled on working with data from the General Social Survey (GSS), as it presents extraordinarily extensive data on both demographics and opinions.
