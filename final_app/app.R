@@ -162,6 +162,7 @@ server <- function(input, output, session) {
                    })
     
     output$preview <- renderDataTable({
+      
       # Read uploaded file if selected
       if (!is.null(input$file)) {
         data <- read.csv(input$file$datapath, header = TRUE)
@@ -229,7 +230,8 @@ server <- function(input, output, session) {
   
   # Function to preprocess data and output a preview
   preprocess_data <- function(train_data, test_data) {
-    # Apply preprocessing steps using recipe to training data
+    
+    # Apply preprocessing steps
     blueprint <- recipe(CLASS_ ~ ., data = train_data) %>%
       step_other(all_nominal_predictors(),
                  threshold = 0.01,
@@ -241,10 +243,8 @@ server <- function(input, output, session) {
     
     preprocessed_train_data <- blueprint %>% prep() %>% bake(new_data = NULL)
     
-    # Apply preprocessing steps using recipe to testing data
     preprocessed_test_data <- blueprint %>% prep() %>% bake(new_data = test_data)
     
-    # Return preprocessed training and testing data
     list(train_data = head(preprocessed_train_data), test_data = head(preprocessed_test_data))
   }
   
@@ -254,10 +254,8 @@ server <- function(input, output, session) {
       train_data <- split_data()$train_data
       test_data <- split_data()$test_data
       
-      # Preprocess data
       preprocessed_data <- preprocess_data(train_data, test_data)
       
-      # Return preprocessed training data
       preprocessed_data$train_data
     }
   })
@@ -267,15 +265,12 @@ server <- function(input, output, session) {
       train_data <- split_data()$train_data
       test_data <- split_data()$test_data
       
-      # Preprocess data
       preprocessed_data <- preprocess_data(train_data, test_data)
       
-      # Return preprocessed testing data
       preprocessed_data$test_data
     }
   })
   
-  # Train model based on the selected model
   trained_model <- eventReactive(input$loadModel, {
     model <- switch(input$selectedModel,
                     "rf" = rf,  
@@ -299,6 +294,13 @@ server <- function(input, output, session) {
   })
   
   output$predictionPlot <- renderPlot({
+    # Get the response variable from the reactive value
+    response_variable <- selected_response()
+    
+    # Extract actual values from the dataset
+    actual_train_values <- train_data[[response_variable]]
+    actual_test_values <- test_data[[response_variable]]
+    
     if (input$plotType == "Scatterplot") {
       # Scatterplot of actual vs predicted values
       actual_vs_predicted <- data.frame(Actual = actual_values, Predicted = predicted_values)
@@ -320,5 +322,5 @@ server <- function(input, output, session) {
   })
 }
 
-# Run the application 
+# Run application 
 shinyApp(ui = ui, server = server)
