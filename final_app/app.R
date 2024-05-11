@@ -82,10 +82,15 @@ ui <- fluidPage(
     tabPanel("Pre-Processing", icon = icon("edit"),
              sidebarLayout(
                sidebarPanel(
-                 selectInput("preprocess_dataset", "Choose Dataset:", 
+                 selectInput("preprocess_dataset", "Choose Dataset or Upload Your Own:", 
                              choices = c("All Data" = "data_all", 
                                          "Demographic Data" = "data_dem", 
-                                         "Opinion Data" = "data_opin")),
+                                         "Opinion Data" = "data_opin",
+                                         "Upload Your Own File" = "upload")),
+                 conditionalPanel(
+                   condition = "input.preprocess_dataset == 'upload'",
+                   fileInput("uploadData", "Upload Dataset:", accept = c(".csv", ".xlsx"))
+                 ),
                  uiOutput("varSelectInput"),  # For selecting variables dynamically
                  checkboxInput("removeNA", "Remove All NAs", value = FALSE),
                  actionButton("applyPreprocess", "Apply Pre-processing", icon = icon("magic"))
@@ -97,72 +102,109 @@ ui <- fluidPage(
              ),
     
     tabPanel("Model Analysis and Summary",
-                        sidebarLayout(
-                          sidebarPanel(
-                            selectInput("selectedModel", "Choose a Model", 
-                                        choices = c("Random Forest" = "rf", 
-                                                    "XGBoost" = "xgb")),
-                            actionButton("loadModel", "Load and Run Model", icon = icon("play-circle"))
-                          ),
-                          mainPanel(
-                            verbatimTextOutput("modelSummary"),
-                            plotOutput("plotActualVsPredicted"),
-                            plotOutput("plotResiduals")
-                          )
-                        )
-             ),
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("modelDataset", "Choose Dataset or Upload Your Own:", 
+                             choices = c("All Data" = "data_all", 
+                                         "Demographic Data" = "data_dem", 
+                                         "Opinion Data" = "data_opin",
+                                         "Upload Your Own File" = "upload")),
+                 conditionalPanel(
+                   condition = "input.modelDataset == 'upload'",
+                   fileInput("uploadModelData", "Upload Dataset:", accept = c(".csv", ".xlsx"))
+                 ),
+                 selectInput("selectedModel", "Choose a Model", 
+                             choices = c("Random Forest" = "rf", 
+                                         "XGBoost" = "xgb")),
+                 actionButton("loadModel", "Load and Run Model", icon = icon("play-circle"))
+               ),
+               mainPanel(
+                 verbatimTextOutput("modelSummary"),
+                 plotOutput("plotActualVsPredicted"),
+                 plotOutput("plotResiduals")
+               )
+             )
+    ),
     tabPanel("Prediction Visuals")
     )
 )
 
 # Define Server
 server <- function(input, output, session) {
-  # Reactive expression to handle data loading based on user selection or file upload
-  File <- reactive({
-    if (input$dataset == 'Upload your own file') {
-      req(input$file)  # Ensure file is uploaded
-      # Read file using data.table's fread for better performance
-      df <- data.frame(fread(input$file$datapath), use.names = TRUE, fill = TRUE)
-      return(df)
+  
+  # Data preview
+  output$data_preview <- renderDataTable({
+    # Read uploaded file if selected
+    if (!is.null(input$file)) {
+      read.csv(input$file$datapath, header = TRUE)
     } else {
-      # Return the dataset based on user selection
       switch(input$dataset,
-             "All_Data" = data_all,
-             "Demographic_Data" = data_dem,
-             "Opinion_Data" = data_opin,
-             data_all)
+             "data_all" = data_all,
+             "data_dem" = data_dem,
+             "data_opin" = data_opin)
     }
   })
   
-  output$data_preview <- renderDataTable({
-    
-    File()
-    
+  # Dynamic UI for file upload in Splitting Data tab
+  output$fileInputUI_split <- renderUI({
+    if (input$dataset == "Upload your own file") {
+      fileInput("file_split", "Select your files:", accept = c("text/csv", "text/comma-separated-values,text/plain", ".csv"))
+    }
   })
   
-  observeEvent(input$applyPreprocess, {
-    req(input$file)  # Ensure the dataset is loaded
-    
-    # Define the recipe
-    blueprint <- recipe(~., data = input$file) %>%
-      step_string2factor(all_nominal_predictors()) %>%
-      step_other(all_nominal_predictors(), threshold = 0.01, other = "Other") %>%
-      step_center(all_numeric_predictors()) %>%
-      step_scale(all_numeric_predictors()) %>%
-      step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
-      step_nzv(all_predictors(), freq_cut = 30/100, unique_cut = 20/100) %>%
-      step_impute_knn(all_predictors(), neighbors = 5) %>%  # Impute missing values
-      prep()  # Prepares the recipe by estimating the required statistics
-    
-    # Bake the recipe to apply the transformations
-    processed_data <- bake(blueprint, new_data = NULL)  # Apply to the entire dataset
-    
-    # Output the processed data to a DataTable
-    output$preprocess_preview <- renderDataTable({
-      datatable(processed_data, options = list(scrollX = TRUE, pageLength = 25))
-    })
+  # Dynamic UI for selecting variables in Splitting Data tab
+  output$varSelectUI_split <- renderUI({
+    if (!is.null(input$file_split)) {
+      var_names <- colnames(read.csv(input$file_split$datapath, header = TRUE))
+      selectInput("split_variable", "Select Variable:", choices = var_names)
+    } else {
+      var_names <- colnames(get(input$dataset))
+      selectInput("split_variable", "Select Variable:", choices = var_names)
+    }
   })
   
+  # Preview data after splitting
+  output$preview <- renderDT({
+    # Your code for previewing split data
+    if (is.null(input$file_split)) {
+      data <- get(input$dataset)
+    } else {
+      data <- read.csv(input$file_split$datapath, header = TRUE)
+    }
+    # Subset data based on selected variable
+    selected_var <- input$split_variable
+    data[, selected_var, drop = FALSE]
+  })
+  
+  # Train set preview
+  output$trainPreview <- renderDT({
+    # Your code for previewing train set
+    if (!is.null(input$splitData)) {
+      train_data <- # your code to split data into train set
+        head(train_data)
+    }
+  })
+  
+  # Test set preview
+  output$testPreview <- renderDT({
+    # Your code for previewing test set
+    if (!is.null(input$splitData)) {
+      test_data <- # your code to split data into test set
+        head(test_data)
+    }
+  })
+  
+  # Pre-processing data
+  output$preprocess_preview <- renderDataTable({
+    # Your code for pre-processing data
+    # Example: Remove NA values if selected
+    if (input$removeNA) {
+      data <- na.omit(get(input$preprocess_dataset))
+    } else {
+      data <- get(input$preprocess_dataset)
+    }
+    data
+  })
 }
 
 # Run the application 
