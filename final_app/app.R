@@ -17,6 +17,9 @@ data_all <- read.csv("data/all_clean.csv", header = TRUE)
 data_dem <- read.csv("data/dem_clean.csv", header = TRUE)
 data_opin <- read.csv("data/opin_clean.csv", header = TRUE)
 
+rf <- readRDS("models/rf_all.rds")
+xg <- readRDS("models/xg_all.rds")
+
 # Define UI for application
 ui <- fluidPage(
   titlePanel("Final Project"),
@@ -93,8 +96,23 @@ ui <- fluidPage(
              )
              ),
     
-    tabPanel("Model Predictions and Visuals", "Model Content Here")
-  )
+    tabPanel("Model Analysis and Summary",
+                        sidebarLayout(
+                          sidebarPanel(
+                            selectInput("selectedModel", "Choose a Model", 
+                                        choices = c("Random Forest" = "rf", 
+                                                    "XGBoost" = "xgb")),
+                            actionButton("loadModel", "Load and Run Model", icon = icon("play-circle"))
+                          ),
+                          mainPanel(
+                            verbatimTextOutput("modelSummary"),
+                            plotOutput("plotActualVsPredicted"),
+                            plotOutput("plotResiduals")
+                          )
+                        )
+             ),
+    tabPanel("Prediction Visuals")
+    )
 )
 
 # Define Server
@@ -120,7 +138,30 @@ server <- function(input, output, session) {
     
     File()
     
-  }) 
+  })
+  
+  observeEvent(input$applyPreprocess, {
+    req(input$file)  # Ensure the dataset is loaded
+    
+    # Define the recipe
+    blueprint <- recipe(~., data = input$file) %>%
+      step_string2factor(all_nominal_predictors()) %>%
+      step_other(all_nominal_predictors(), threshold = 0.01, other = "Other") %>%
+      step_center(all_numeric_predictors()) %>%
+      step_scale(all_numeric_predictors()) %>%
+      step_dummy(all_nominal_predictors(), one_hot = TRUE) %>%
+      step_nzv(all_predictors(), freq_cut = 30/100, unique_cut = 20/100) %>%
+      step_impute_knn(all_predictors(), neighbors = 5) %>%  # Impute missing values
+      prep()  # Prepares the recipe by estimating the required statistics
+    
+    # Bake the recipe to apply the transformations
+    processed_data <- bake(blueprint, new_data = NULL)  # Apply to the entire dataset
+    
+    # Output the processed data to a DataTable
+    output$preprocess_preview <- renderDataTable({
+      datatable(processed_data, options = list(scrollX = TRUE, pageLength = 25))
+    })
+  })
   
 }
 
