@@ -156,15 +156,15 @@ server <- function(input, output, session) {
   output$varSelectUI_split <- renderUI({
     if (!is.null(input$file_split)) {
       var_names <- colnames(read.csv(input$file_split$datapath, header = TRUE))
-      selectInput("split_variable", "Select Variable:", choices = var_names)
+      selectInput("split_variable", "Select Response Variable:", choices = var_names)
     } else {
       var_names <- colnames(get(input$dataset))
-      selectInput("split_variable", "Select Variable:", choices = var_names)
+      selectInput("split_variable", "Select Response Variable:", choices = var_names)
     }
   })
   
   # Preview data after splitting
-  output$preview <- renderDT({
+  output$preview <- renderDataTable({
     # Your code for previewing split data
     if (is.null(input$file_split)) {
       data <- get(input$dataset)
@@ -176,21 +176,27 @@ server <- function(input, output, session) {
     data[, selected_var, drop = FALSE]
   })
   
+  # Split data into train and test sets
+  split_data <- reactive({
+    split_ratio <- input$splitRatio / 100
+    index <- round(nrow(data()) * split_ratio)
+    train_data <- data()[1:index, ]
+    test_data <- data()[(index + 1):nrow(data()), ]
+    list(train_data = train_data, test_data = test_data)
+  })
+  
   # Train set preview
-  output$trainPreview <- renderDT({
-    # Your code for previewing train set
+  output$trainPreview <- renderDataTable({
     if (!is.null(input$splitData)) {
-      train_data <- # your code to split data into train set
-        head(train_data)
+      head(split_data()$train_data)
     }
   })
   
   # Test set preview
-  output$testPreview <- renderDT({
+  output$testPreview <- renderDataTable({
     # Your code for previewing test set
     if (!is.null(input$splitData)) {
-      test_data <- # your code to split data into test set
-        head(test_data)
+      head(split_data()$test_data)
     }
   })
   
