@@ -57,7 +57,7 @@ ui <- fluidPage(
     tabPanel("Splitting Data",
              sidebarLayout(
                sidebarPanel(
-                 selectInput("dataset_split", "Choose a dataset or upload your own:",
+                 selectInput("dataset", "Choose a dataset or upload your own:",
                              choices = c("All_Data" = "data_all", 
                                          "Demographic_Data" = "data_dem", 
                                          "Opinion_Data" = "data_opin", 
@@ -76,7 +76,22 @@ ui <- fluidPage(
                )
              )
     ),
-    tabPanel("Pre-Processing", "Model Content Here"),
+    tabPanel("Pre-Processing", icon = icon("edit"),
+             sidebarLayout(
+               sidebarPanel(
+                 selectInput("preprocess_dataset", "Choose Dataset:", 
+                             choices = c("All Data" = "data_all", 
+                                         "Demographic Data" = "data_dem", 
+                                         "Opinion Data" = "data_opin")),
+                 uiOutput("varSelectInput"),  # For selecting variables dynamically
+                 checkboxInput("removeNA", "Remove All NAs", value = FALSE),
+                 actionButton("applyPreprocess", "Apply Pre-processing", icon = icon("magic"))
+               ),
+               mainPanel(
+                 dataTableOutput("preprocess_preview")
+               )
+             )
+             ),
     
     tabPanel("Model Predictions and Visuals", "Model Content Here")
   )
@@ -96,64 +111,17 @@ server <- function(input, output, session) {
       switch(input$dataset,
              "All_Data" = data_all,
              "Demographic_Data" = data_dem,
-             "Opinion_Data" = data_opin)
+             "Opinion_Data" = data_opin,
+             data_all)
     }
   })
   
-  # Render data preview table
   output$data_preview <- renderDataTable({
-    File()
-  })
-  
-  # Observe changes in the loaded data to update UI elements
-  observe({
-    df <- req(File())  # Ensure data is loaded
-    updateSelectInput(session, "response", choices = names(df))
-    updateSelectInput(session, "var", choices = names(df))
-  })
-  
-  # Update the UI elements for selecting variables dynamically based on the dataset loaded
-  output$varSelectUI_split <- renderUI({
-    if (!is.null(dataset()) && ncol(dataset()) > 0) {
-      selectInput("responseVar", "Select Response Variable:", choices = names(dataset()))
-    }
-  })
-  
-  # Logic to handle dynamic UI for file uploads
-  output$fileInputUI_split <- renderUI({
-    if (input$dataset_split == "Upload your own file") {
-      fileInput("datafile_split", "Upload CSV File:", accept = ".csv")
-    }
-  })
-  
-  # Observe the action button for data splitting
-  observeEvent(input$splitData, {
-    req(dataset())  # Ensure the dataset is loaded
-    data <- dataset()
-    responseVar <- input$responseVar  # The variable to predict
     
-    # Check if the selected response variable exists in the dataset
-    if (responseVar %in% names(data)) {
-      # Randomly sample indices for the training set based on the input ratio
-      set.seed(123)  # For reproducibility
-      trainIndices <- sample(seq_len(nrow(data)), size = floor(nrow(data) * input$splitRatio / 100))
-      trainSet <- data[trainIndices, , drop = FALSE]
-      testSet <- data[-trainIndices, , drop = FALSE]
-      
-      # Update data previews
-      output$preview <- renderDT({
-        datatable(data)
-      })
-      output$trainPreview <- renderDT({
-        datatable(trainSet)
-      })
-      output$testPreview <- renderDT({
-        datatable(testSet)
-      })
-    } else {
-      showNotification("Selected response variable is not in the dataset", type = "error")
-    }
-  })
+    File()
+    
+  }) 
+  
 }
 
 # Run the application 
