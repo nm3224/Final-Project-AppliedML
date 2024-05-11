@@ -40,8 +40,8 @@ ui <- fluidPage(
                         
                         Final Research Question: How well can each of our chosen models (XGBoost, Random Forest, and Artificial Neural Network) 
                         predict an individual's independently defined subjective social class based on 3 data subsets:<br><br> 
-                            1) solely variables such as demographic information (ex. income, race, occupation), <br><br> 
-                            2) solely variables such as opinion data (ex. political opinions), <br><br>
+                            1) solely variables such as demographic information (ex. income, race, occupation),<br><br> 
+                            2) solely variables such as opinion data (ex. political opinions),<br><br>
                             3) both these variable datasets combined?"))
     ),
     tabPanel("Our Data", icon = icon("folder-open"),
@@ -75,9 +75,9 @@ ui <- fluidPage(
                ),
                mainPanel(
                  tabsetPanel(
-                   tabPanel("Preview", DTOutput("preview")),
-                   tabPanel("Train Set Preview", DTOutput("trainPreview")),
-                   tabPanel("Test Set Preview", DTOutput("testPreview"))
+                   tabPanel("Preview", dataTableOutput("preview")),
+                   tabPanel("Train Set Preview", dataTableOutput("trainPreview")),
+                   tabPanel("Test Set Preview", dataTableOutput("testPreview"))
                  )
                )
              )
@@ -130,11 +130,44 @@ ui <- fluidPage(
 # Define Server
 server <- function(input, output, session) {
   
+  split_data <- reactive({
+    data <- switch(input$dataset,
+                   "data_all" = data_all,
+                   "data_dem" = data_dem,
+                   "data_opin" = data_opin,
+                   "Upload your own file" = {
+                     req(input$file)
+                     read.csv(input$file$datapath, header = TRUE)
+                   })
+    
+    output$preview <- renderDataTable({
+      # Read uploaded file if selected
+      if (!is.null(input$file)) {
+        data <- read.csv(input$file$datapath, header = TRUE)
+      } else {
+        switch(input$dataset,
+               "data_all" = data_all,
+               "data_dem" = data_dem,
+               "data_opin" = data_opin)
+      }
+    })
+    
+    if (!is.null(data)) {
+      split_ratio <- input$splitRatio / 100
+      index <- round(nrow(data) * split_ratio)
+      train_data <- data[1:index, ]
+      test_data <- data[(index + 1):nrow(data), ]
+      list(train_data = train_data, test_data = test_data)
+    } else {
+      list(train_data = NULL, test_data = NULL)
+    }
+  })
+  
   # Data preview
   output$data_preview <- renderDataTable({
     # Read uploaded file if selected
     if (!is.null(input$file)) {
-      read.csv(input$file$datapath, header = TRUE)
+      data <- read.csv(input$file$datapath, header = TRUE)
     } else {
       switch(input$dataset,
              "data_all" = data_all,
@@ -161,41 +194,16 @@ server <- function(input, output, session) {
     }
   })
   
-  # Preview data after splitting
-  output$preview <- renderDataTable({
-    # Your code for previewing split data
-    if (is.null(input$file_split)) {
-      data <- get(input$dataset)
-    } else {
-      data <- read.csv(input$file_split$datapath, header = TRUE)
-    }
-    # Subset data based on selected variable
-    selected_var <- input$split_variable
-    data[, selected_var, drop = FALSE]
-  })
-  
-  # Split data into train and test sets
-  split_data <- reactive({
-    split_ratio <- input$splitRatio / 100
-    index <- round(nrow(data()) * split_ratio)
-    train_data <- data()[1:index, ]
-    test_data <- data()[(index + 1):nrow(data()), ]
-    list(train_data = train_data, test_data = test_data)
-  })
-  
   # Train set preview
   output$trainPreview <- renderDataTable({
-    if (!is.null(input$splitData)) {
-      head(split_data()$train_data)
-    }
+    req(split_data()$train_data)
+    head(split_data()$train_data)
   })
   
   # Test set preview
   output$testPreview <- renderDataTable({
-    # Your code for previewing test set
-    if (!is.null(input$splitData)) {
-      head(split_data()$test_data)
-    }
+    req(split_data()$test_data)
+    head(split_data()$test_data)
   })
   
   # Pre-processing data
@@ -210,7 +218,18 @@ server <- function(input, output, session) {
     data
   })
   
+  # Train model based on the selected model
+  trained_model <- eventReactive(input$loadModel, {
+    model <- switch(input$model,
+                    "rf" = rf,  
+                    "xg" = xg)
+    return(model)
+  })
   
+  # Output model summary
+  output$modelSummary <- renderPrint({
+    summary(trained_model())
+  })
   
 }
 
