@@ -21,6 +21,7 @@ library(vip)
 library(igraph)
 library(foreign)
 library(MLmetrics)
+library(RSNNS)
 ```
 
 
@@ -288,10 +289,10 @@ columns_to_elim <- as.character(columns_to_elim)
 columns_to_keep <- setdiff(colnames(all_clean), columns_to_elim)
 all_clean <- all_clean %>% select(all_of(columns_to_keep))
 
-# removing rows with NA in more than 10% of all columns
+# removing rows with NA in more than 5% of all columns
 na_row_all <- rowSums(is.na(all_clean))
 
-threshold <- ncol(all_clean) * 0.10
+threshold <- ncol(all_clean) * 0.05
 
 all_clean <- all_clean[na_row_all <= threshold, ]
 
@@ -826,7 +827,7 @@ test <- bake(blueprint_prep, new_data = test)
 
 
 
-## XG BOOST
+## XGBoost
 
 
 #### demographic variables
@@ -847,7 +848,7 @@ hyper_grid <- expand.grid(nrounds = c(100, 150),
 set.seed(1)
 
 suppressWarnings(
-  xg_fit <- train(
+  xg_fit <- caret::train(
     CLASS_ ~ .,
     data = dem_train,
     method = "xgbTree",
@@ -860,13 +861,14 @@ suppressWarnings(
 
 xg_fit$bestTune
 
+par(mfrow = c(2, 2))
 plot(xg_fit)
 ```
 
 ```{r}
 xg_control_final <- trainControl(method = "none", classProbs = TRUE)
 
-xg_final_fit <- train(CLASS_ ~ .,
+xg_final_fit <- caret::train(CLASS_ ~ .,
                 data = dem_train, 
                 method = "xgbTree",
                 verbose = FALSE,
@@ -878,15 +880,14 @@ xg_final_fit <- train(CLASS_ ~ .,
                           subsample = 0.6,  
                           gamma = 0,
                           colsample_bytree = 0.9),
-                metric = "ROC", 
-                importance = "impurity")
+                metric = "ROC")
 
 
 # Training set results
 
 xg_pred_train <- predict(xg_final_fit, newdata = dem_train)
 
-xg_train_results <- confusionMatrix(dem_train$CLASS_, xg_pred_train)
+xg_train_results <- caret::confusionMatrix(dem_train$CLASS_, xg_pred_train)
 
 xg_train_results
 
@@ -895,7 +896,7 @@ xg_train_results
 
 xg_pred_test <- predict(xg_final_fit, newdata = dem_test)
 
-xg_test_results <- confusionMatrix(dem_test$CLASS_, xg_pred_test)
+xg_test_results <- caret::confusionMatrix(dem_test$CLASS_, xg_pred_test)
 
 xg_test_results
 
@@ -925,7 +926,7 @@ hyper_grid <- expand.grid(nrounds = c(100, 150),
 set.seed(1)
 
 suppressWarnings(
-  xg_fit <- train(
+  xg_fit <- caret::train(
     CLASS_ ~ .,
     data = opin_train,
     method = "xgbTree",
@@ -938,6 +939,7 @@ suppressWarnings(
 
 xg_fit$bestTune
 
+par(mfrow = c(2, 2))
 plot(xg_fit)
 ```
 
@@ -945,7 +947,7 @@ plot(xg_fit)
 ```{r}
 xg_control_final <- trainControl(method = "none", classProbs = TRUE)
 
-xg_final_fit <- train(CLASS_ ~ .,
+xg_final_fit <- caret::train(CLASS_ ~ .,
                 data = opin_train, 
                 method = "xgbTree",
                 verbose = FALSE,
@@ -957,15 +959,14 @@ xg_final_fit <- train(CLASS_ ~ .,
                           subsample = 0.6,  
                           gamma = 0,
                           colsample_bytree = 1),
-                metric = "ROC", 
-                importance = "impurity")
+                metric = "ROC")
 
 
 # Training set results
 
 xg_pred_train <- predict(xg_final_fit, newdata = opin_train)
 
-xg_train_results <- confusionMatrix(opin_train$CLASS_, xg_pred_train)
+xg_train_results <- caret::confusionMatrix(opin_train$CLASS_, xg_pred_train)
 
 xg_train_results
 
@@ -974,7 +975,7 @@ xg_train_results
 
 xg_pred_test <- predict(xg_final_fit, newdata = opin_test)
 
-xg_test_results <- confusionMatrix(opin_test$CLASS_, xg_pred_test)
+xg_test_results <- caret::confusionMatrix(opin_test$CLASS_, xg_pred_test)
 
 xg_test_results
 
@@ -1003,7 +1004,7 @@ hyper_grid <- expand.grid(nrounds = c(100, 150),
 set.seed(1)
 
 suppressWarnings(
-  xg_fit <- train(
+  xg_fit <- caret::train(
     CLASS_ ~ .,
     data = train,
     method = "xgbTree",
@@ -1016,6 +1017,7 @@ suppressWarnings(
 
 xg_fit$bestTune
 
+par(mfrow = c(2, 2))
 plot(xg_fit)
 ```
 
@@ -1023,7 +1025,7 @@ plot(xg_fit)
 ```{r}
 xg_control_final <- trainControl(method = "none", classProbs = TRUE)
 
-xg_final_fit <- train(CLASS_ ~ .,
+xg_final_fit <- caret::train(CLASS_ ~ .,
                 data = train, 
                 method = "xgbTree",
                 verbose = FALSE,
@@ -1035,15 +1037,14 @@ xg_final_fit <- train(CLASS_ ~ .,
                           subsample = 0.6,  
                           gamma = 0,
                           colsample_bytree = 1),
-                metric = "ROC", 
-                importance = "impurity")
+                metric = "ROC")
 
 
 # Training set results
 
 xg_pred_train <- predict(xg_final_fit, newdata = train)
 
-xg_train_results <- confusionMatrix(train$CLASS_, xg_pred_train)
+xg_train_results <- caret::confusionMatrix(train$CLASS_, xg_pred_train)
 
 xg_train_results
 
@@ -1052,7 +1053,7 @@ xg_train_results
 
 xg_pred_test <- predict(xg_final_fit, newdata = test)
 
-xg_test_results <- confusionMatrix(test$CLASS_, xg_pred_test)
+xg_test_results <- caret::confusionMatrix(test$CLASS_, xg_pred_test)
 
 xg_test_results
 
@@ -1068,7 +1069,7 @@ vip(xg_final_fit, num_features = 20)
 #### demographic variables
 
 ```{r}
-rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
+rf_resamp <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
 hyper_grid <- expand.grid(
   mtry = c(10, 14, 17),
   splitrule = c("gini", "extratrees"),
@@ -1078,14 +1079,16 @@ hyper_grid <- expand.grid(
 
 set.seed(1)
 
-rf_fit <- train(CLASS_ ~ .,
+rf_fit <- caret::train(CLASS_ ~ .,
                 data = dem_train, 
                 method = "ranger",
                 verbose = FALSE,
                 trControl = rf_resamp, 
                 tuneGrid = hyper_grid,
-                metric = "ROC")
+                metric = "ROC",
+                num.trees = 1000)
 rf_fit$bestTune
+
 plot(rf_fit)
 
 ```
@@ -1093,7 +1096,7 @@ plot(rf_fit)
 ```{r}
 rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
 
-rf_final <- train(
+rf_final <- caret::train(
       CLASS_ ~ .,
   
       data = dem_train,
@@ -1108,11 +1111,13 @@ rf_final <- train(
         
           .mtry = 17,
     
-          .min.node.size = 7,
+          .min.node.size = 5,
     
           .splitrule = "gini"
-      ),
-  
+      ), 
+      
+      num.trees = 1000, 
+      
       importance = "impurity"
 )
 
@@ -1120,7 +1125,7 @@ rf_final <- train(
 
 rf_pred_train <- predict(rf_final, newdata = dem_train)
 
-rf_train_results <- confusionMatrix(dem_train$CLASS_, rf_pred_train)
+rf_train_results <- caret::confusionMatrix(dem_train$CLASS_, rf_pred_train)
 
 rf_train_results
 
@@ -1128,7 +1133,7 @@ rf_train_results
 
 rf_pred_test <- predict(rf_final, newdata = dem_test)
 
-rf_test_results <- confusionMatrix(dem_test$CLASS_, rf_pred_test)
+rf_test_results <- caret::confusionMatrix(dem_test$CLASS_, rf_pred_test)
 
 rf_test_results
 
@@ -1142,7 +1147,7 @@ vip(rf_final, num_features = 20)
 #### opinion variables
 
 ```{r}
-rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
+rf_resamp <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
 hyper_grid <- expand.grid(
   mtry = c(10, 14, 17),
   splitrule = c("gini", "extratrees"),
@@ -1152,13 +1157,14 @@ hyper_grid <- expand.grid(
 
 set.seed(1)
 
-rf_fit <- train(CLASS_ ~ .,
+rf_fit <- caret::train(CLASS_ ~ .,
                 data = opin_train, 
                 method = "ranger",
                 verbose = FALSE,
                 trControl = rf_resamp, 
                 tuneGrid = hyper_grid,
-                metric = "ROC")
+                metric = "ROC", 
+                num.trees = 700)
 rf_fit$bestTune
 plot(rf_fit)
 
@@ -1168,80 +1174,9 @@ plot(rf_fit)
 ```{r}
 rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
 
-rf_final <- train(CLASS_ ~., 
+rf_final <- caret::train(CLASS_ ~., 
                   
                   data = opin_train,
-                  
-                  method = "ranger",
-                  
-                  trControl = rf_fit_final,
-                  
-                  metric = "ROC",
-                  
-                  tuneGrid = data.frame(.mtry = 14,
-                                        
-                                        .min.node.size = 5,
-                                        
-                                        .splitrule = "gini"), 
-                  
-                  importance = "impurity")
-
-
-# Training set results
-
-rf_pred_train <- predict(rf_final, newdata = opin_train)
-
-rf_train_results <- confusionMatrix(opin_train$CLASS_, rf_pred_train)
-
-rf_train_results
-
-
-# Test set results
-
-rf_pred_test <- predict(rf_final, newdata = opin_test)
-
-rf_test_results <- confusionMatrix(opin_test$CLASS_, rf_pred_test)
-
-rf_test_results
-
-
-# Feature importance
-
-vip(rf_final, num_features = 20)
-```
-
-
-#### all variables
-
-```{r}
-rf_resamp <- trainControl(method = "boot", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
-hyper_grid <- expand.grid(
-  mtry = c(10, 14, 17),
-  splitrule = c("gini", "extratrees"),
-  min.node.size = c(5, 7, 9))
-
-
-set.seed(1)
-
-rf_fit <- train(CLASS_ ~ .,
-                data = train, 
-                method = "ranger",
-                verbose = FALSE,
-                trControl = rf_resamp, 
-                tuneGrid = hyper_grid,
-                metric = "ROC")
-rf_fit$bestTune
-plot(rf_fit)
-
-```
-
-
-```{r}
-rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
-
-rf_final <- train(CLASS_ ~., 
-                  
-                  data = train,
                   
                   method = "ranger",
                   
@@ -1255,13 +1190,89 @@ rf_final <- train(CLASS_ ~.,
                                         
                                         .splitrule = "gini"), 
                   
+                  num.trees = 700, 
+                  
+                  importance = "impurity")
+
+
+# Training set results
+
+rf_pred_train <- predict(rf_final, newdata = opin_train)
+
+rf_train_results <- caret::confusionMatrix(opin_train$CLASS_, rf_pred_train)
+
+rf_train_results
+
+
+# Test set results
+
+rf_pred_test <- predict(rf_final, newdata = opin_test)
+
+rf_test_results <- caret::confusionMatrix(opin_test$CLASS_, rf_pred_test)
+
+rf_test_results
+
+
+# Feature importance
+
+vip(rf_final, num_features = 20)
+```
+
+
+#### all variables
+
+```{r}
+rf_resamp <- trainControl(method = "cv", number = 5, classProbs = TRUE, summaryFunction = multiClassSummary)
+hyper_grid <- expand.grid(
+  mtry = c(10, 14, 17),
+  splitrule = c("gini", "extratrees"),
+  min.node.size = c(5, 7, 9))
+
+
+set.seed(1)
+
+rf_fit <- caret::train(CLASS_ ~ .,
+                data = train, 
+                method = "ranger",
+                verbose = FALSE,
+                trControl = rf_resamp, 
+                tuneGrid = hyper_grid,
+                metric = "ROC", 
+                num.trees = 2000)
+rf_fit$bestTune
+plot(rf_fit)
+
+```
+
+
+```{r}
+rf_fit_final <- trainControl(method = "none", classProbs = TRUE)
+
+rf_final <- caret::train(CLASS_ ~., 
+                  
+                  data = train,
+                  
+                  method = "ranger",
+                  
+                  trControl = rf_fit_final,
+                  
+                  metric = "ROC",
+                  
+                  tuneGrid = data.frame(.mtry = 17,
+                                        
+                                        .min.node.size = 5,
+                                        
+                                        .splitrule = "gini"), 
+                
+                  num.trees = 2000, 
+                  
                   importance = "impurity")
 
 # Training set results
 
 rf_pred_train <- predict(rf_final, newdata = train)
 
-rf_train_results <- confusionMatrix(train$CLASS_, rf_pred_train)
+rf_train_results <- caret::confusionMatrix(train$CLASS_, rf_pred_train)
 
 rf_train_results
 
@@ -1269,7 +1280,7 @@ rf_train_results
 
 rf_pred_test <- predict(rf_final, newdata = test)
 
-rf_test_results <- confusionMatrix(test$CLASS_, rf_pred_test)
+rf_test_results <- caret::confusionMatrix(test$CLASS_, rf_pred_test)
 
 rf_test_results
 
@@ -1285,6 +1296,8 @@ vip(rf_final, num_features = 20)
 
 ### ARTIFICIAL NEURAL NETWORK
 
+#### demographic variables
+
 ```{r}
 set.seed(1)
 resample <- trainControl(method = "cv",
@@ -1293,29 +1306,225 @@ resample <- trainControl(method = "cv",
                         summaryFunction = multiClassSummary)
 
 hyper_grid <- expand.grid(layer1 = c(25, 45),
-                          layer2 = c(0, 30),
+                          layer2 = c(5, 30),
                           layer3 = c(0, 15))
-dnn_fit <- train(CLASS_ ~ .,
-                data = dem_train,
-                method = "mlpML",
-                trControl = resample,
-                tuneGrid = hyper_grid,
-                metric = "ROC")
-dnn_fit
+dnn_fit <- caret::train(
+  CLASS_ ~ .,
+  data = dem_train,
+  method = "mlpML",
+  trControl = resample,
+  tuneGrid = hyper_grid,
+  metric = "ROC"
+)
+
+dnn_fit$bestTune
+
+plot(dnn_fit)
 
 ```
 
 ```{r}
-dnn_final <- train(CLASS_ ~ .,
+dnn_final <- caret::train(CLASS_ ~ .,
                   data = dem_train,
                   method = "mlpML",
-                  tuneGrid = data.frame(layer1 = 25, layer2 = 0, layer3 = 0),
+                  tuneGrid = data.frame(layer1 = 25, layer2 = 30, layer3 = 15),
                   metric = "ROC",
-                  trControl = trainControl(method = "none", classProbs = TRUE))
+                  trControl = trainControl(method = "none", classProbs = TRUE), 
+                  importance = "impurity")
 
 dnn_pred_train <- predict(dnn_final, newdata = dem_train)
 dnn_pred_test <- predict(dnn_final, newdata = dem_test)
 
-print(confusionMatrix(dnn_pred_train, dem_train$CLASS_))
-print(confusionMatrix(dnn_pred_test, dem_test$CLASS_))
+caret::confusionMatrix(dnn_pred_train, dem_train$CLASS_)
+caret::confusionMatrix(dnn_pred_test, dem_test$CLASS_)
+
+
+# Feature importance
+
+perm_importance_all <- function(model, data, target) {
+  # Store the original accuracy
+  original_accuracy <- postResample(predict(model, data), data[[target]])[1]
+  
+  # Initialize a vector to store importance
+  importances <- setNames(rep(NA, ncol(data) - 1), names(data)[names(data) != target])
+  
+  # Loop over all features except the target
+  for (feature in names(importances)) {
+    # Permute the feature
+    data_perm <- data
+    data_perm[[feature]] <- sample(data[[feature]])
+    
+    # Measure accuracy with the permuted feature
+    permuted_accuracy <- postResample(predict(model, data_perm), data_perm[[target]])[1]
+    
+    # Calculate the drop in accuracy
+    importances[feature] <- original_accuracy - permuted_accuracy
+  }
+  
+  return(importances)
+}
+
+# Apply the function to your data
+feature_importances <- perm_importance_all(dnn_final, dem_train, "CLASS_")
+
+# Sort and select the top 20 features
+top_features <- sort(feature_importances, decreasing = T)[1:20]
+
+# Print the results
+feature_data <- data.frame(Feature = names(top_features), Importance = top_features)
+
+# Create the bar plot
+plot <- ggplot(feature_data, aes(x = reorder(Feature, -Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +  # Draw bars
+  coord_flip() +  # Flip coordinates to make the bar plot horizontal
+  theme_minimal() +  # Minimal theme
+  labs(title = "Feature Importance", x = "Feature", y = "Decrease in Accuracy") +  # Add labels
+  geom_text(aes(label = sprintf("%.4f", Importance)), hjust = -0.1, color = "black", size = 3.5)  # Add text labels
+
+# Print the plot
+print(plot)
 ```
+
+
+
+
+
+#### opinion variables
+
+```{r}
+set.seed(1)
+resample <- trainControl(method = "cv",
+                        number = 5,
+                        classProbs = TRUE,
+                        summaryFunction = multiClassSummary)
+
+hyper_grid <- expand.grid(layer1 = c(25, 45),
+                          layer2 = c(5, 30),
+                          layer3 = c(0, 15))
+dnn_fit <- caret::train(
+  CLASS_ ~ .,
+  data = opin_train,
+  method = "mlpML",
+  trControl = resample,
+  tuneGrid = hyper_grid,
+  metric = "ROC"
+)
+
+dnn_fit$bestTune
+
+plot(dnn_fit)
+
+```
+
+
+
+```{r}
+dnn_final <- caret::train(CLASS_ ~ .,
+                  data = opin_train,
+                  method = "mlpML",
+                  tuneGrid = data.frame(layer1 = 25, layer2 = 30, layer3 = 15),
+                  metric = "ROC",
+                  trControl = trainControl(method = "none", classProbs = TRUE), 
+                  importance = "impurity")
+
+dnn_pred_train <- predict(dnn_final, newdata = opin_train)
+dnn_pred_test <- predict(dnn_final, newdata = opin_test)
+
+caret::confusionMatrix(dnn_pred_train, opin_train$CLASS_)
+caret::confusionMatrix(dnn_pred_test, opin_test$CLASS_)
+
+
+# Feature importance
+
+# Apply the function to your data
+feature_importances <- perm_importance_all(dnn_final, opin_train, "CLASS_")
+
+# Sort and select the top 20 features
+top_features <- sort(feature_importances, decreasing = T)[1:20]
+
+# Print the results
+feature_data <- data.frame(Feature = names(top_features), Importance = top_features)
+
+# Create the bar plot
+plot <- ggplot(feature_data, aes(x = reorder(Feature, -Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +  # Draw bars
+  coord_flip() +  # Flip coordinates to make the bar plot horizontal
+  theme_minimal() +  # Minimal theme
+  labs(title = "Feature Importance", x = "Feature", y = "Decrease in Accuracy") +  # Add labels
+  geom_text(aes(label = sprintf("%.4f", Importance)), hjust = -0.1, color = "black", size = 3.5)  # Add text labels
+
+# Print the plot
+print(plot)
+```
+
+
+
+
+#### all variables
+
+```{r}
+set.seed(1)
+resample <- trainControl(method = "cv",
+                        number = 5,
+                        classProbs = TRUE,
+                        summaryFunction = multiClassSummary)
+
+hyper_grid <- expand.grid(layer1 = c(25, 45),
+                          layer2 = c(5, 30),
+                          layer3 = c(0, 15))
+dnn_fit <- caret::train(
+  CLASS_ ~ .,
+  data = train,
+  method = "mlpML",
+  trControl = resample,
+  tuneGrid = hyper_grid,
+  metric = "ROC"
+)
+
+dnn_fit$bestTune
+
+plot(dnn_fit)
+
+```
+
+
+
+```{r}
+dnn_final <- caret::train(CLASS_ ~ .,
+                  data = train,
+                  method = "mlpML",
+                  tuneGrid = data.frame(layer1 = 45, layer2 = 30, layer3 = 15),
+                  metric = "ROC",
+                  trControl = trainControl(method = "none", classProbs = TRUE), 
+                  importance = "impurity")
+
+dnn_pred_train <- predict(dnn_final, newdata = train)
+dnn_pred_test <- predict(dnn_final, newdata = test)
+
+caret::confusionMatrix(dnn_pred_train, train$CLASS_)
+caret::confusionMatrix(dnn_pred_test, test$CLASS_)
+
+
+# Feature importance
+
+# Apply the function to your data
+feature_importances <- perm_importance_all(dnn_final, train, "CLASS_")
+
+# Sort and select the top 20 features
+top_features <- sort(feature_importances, decreasing = T)[1:20]
+
+# Print the results
+feature_data <- data.frame(Feature = names(top_features), Importance = top_features)
+
+# Create the bar plot
+plot <- ggplot(feature_data, aes(x = reorder(Feature, -Importance), y = Importance)) +
+  geom_bar(stat = "identity", fill = "steelblue") +  # Draw bars
+  coord_flip() +  # Flip coordinates to make the bar plot horizontal
+  theme_minimal() +  # Minimal theme
+  labs(title = "Feature Importance", x = "Feature", y = "Decrease in Accuracy") +  # Add labels
+  geom_text(aes(label = sprintf("%.4f", Importance)), hjust = -0.1, color = "black", size = 3.5)  # Add text labels
+
+# Print the plot
+print(plot)
+```
+
