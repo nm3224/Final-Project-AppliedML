@@ -10,32 +10,22 @@ library(ggExtra)
 
 library(data.table)
 
+library(caret)
 
+# Loading data
 data_all <- read.csv("data/all_clean.csv", header = TRUE)
 data_dem <- read.csv("data/dem_clean.csv", header = TRUE)
-data_misc <- read.csv("data/misc_clean.csv", header = TRUE)
 data_opin <- read.csv("data/opin_clean.csv", header = TRUE)
 
-
 # Define UI for application
-
 ui <- fluidPage(
-  
   titlePanel("Final Project"),
-  
   navbarPage(
-    
-    title = ("Project Overview"),
-    
+    title = "Project Overview",
     theme = shinytheme("flatly"),
-    
     tabPanel("Project Details", icon = icon("info-circle"),
-             
              titlePanel("Predicting Social Class Based on Differing Variables"),
-             
-             mainPanel(
-               
-               HTML("STAT 3106: Applied Machine Learning - Final Project:<br><br>
+             mainPanel(HTML("STAT 3106: Applied Machine Learning - Final Project:<br><br>
                
                         We decided early on that we would all be interested in a question of the social sciences, 
                         namely in exploring how demographics relate to political opinions and identity. 
@@ -46,265 +36,125 @@ ui <- fluidPage(
                         With over 72,000 observations on almost 6,700 variables, this dataset was extraordinarily large.<br><br> 
                         
                         Final Research Question: How well can each of our chosen models (XGBoost, Random Forest, and Artificial Neural Network) 
-                        predict an individual's independently defined subjective social class based on 4 data subsets: 1) solely variables such as demographic information (ex. income, race, occupation); 2) solely variables such as opinion data (ex. political opinions); 4) solely variables pertaining to (fill in misc?); 3) all variables?
-"))
-             
+                        predict an individual's independently defined subjective social class based on 3 data subsets: 1) solely variables such as demographic information (ex. income, race, occupation); 2) solely variables such as opinion data (ex. political opinions); 3) both these variable datasets combined."))
     ),
-    
     tabPanel("Our Data", icon = icon("folder-open"),
-             
              titlePanel("Upload Data"),
-             
              sidebarLayout(
-               
                sidebarPanel(
-                 
-                 selectInput("dataset", "Dataset:", choices = c("All_Data" = "data_all", "Demographic_Data" = "data_dem", "Opinion_Data" = "data_opin", "Misc_Data" = "data_misc", "Upload your own file")),
-                 
+                 selectInput("dataset", "Dataset:", choices = c("All_Data" = "data_all", 
+                                                                "Demographic_Data" = "data_dem", 
+                                                                "Opinion_Data" = "data_opin", 
+                                                                "Upload your own file")),
                  conditionalPanel(condition = "input.dataset == 'Upload your own file'",
-                                  
-                                  fileInput("file", "Select your files:",
-                                            
-                                            accept=c("text/csv",
-                                                     
-                                                     "text/comma-separated-values,text/plain",
-                                                     
-                                                     ".csv"))  
-                                  
+                                  fileInput("file", "Select your files:", accept = c("text/csv",
+                                                                                     "text/comma-separated-values,text/plain", ".csv"))
                  )
-                 
                ),
-               
-               mainPanel(
-                 
-                 
-                 dataTableOutput("data_preview")
-                 
-               )
-               
+               mainPanel(dataTableOutput("data_preview"))
              )
-             
     ),
-    
-    tabPanel("Exploratory Visuals",
-             
-             titlePanel("Scatterplot"),
-             
+    tabPanel("Splitting Data",
              sidebarLayout(
-               
                sidebarPanel(
-                 
-                 selectInput("response", "Response Variable (Y)", choices = NULL), 
-                 
-                 selectInput("explanatory", "Explanatory Variable (X)", choices = NULL),
-                 
-                 sliderInput("shade", "Transaparency Rate", min = 0, max = 1, value = 0.5, step = 0.1),
-                 
-                 checkboxInput("marginal", "Marginal Distributions", value = FALSE)
-                 
+                 selectInput("dataset_split", "Choose a dataset or upload your own:",
+                             choices = c("All_Data" = "data_all", 
+                                         "Demographic_Data" = "data_dem", 
+                                         "Opinion_Data" = "data_opin", 
+                                         "Upload your own file")),
+                 uiOutput("fileInputUI_split"),  # Dynamic UI for file upload
+                 uiOutput("varSelectUI_split"),  # Dynamic UI for selecting variables
+                 sliderInput("splitRatio", "Train/Test Split Ratio (%)", min = 0, max = 100, value = 70),
+                 actionButton("splitData", "Split Data", icon = icon("cut"))
                ),
-               
                mainPanel(
-                 
                  tabsetPanel(
-                   
-                   tabPanel("Scatterplot", 
-                            
-                            plotOutput("plot1")),
-                   
-                   tabPanel("Numeric Summary",
-                            
-                            dataTableOutput("result1"))
-                   
+                   tabPanel("Preview", DTOutput("preview")),
+                   tabPanel("Train Set Preview", DTOutput("trainPreview")),
+                   tabPanel("Test Set Preview", DTOutput("testPreview"))
                  )
-                 
                )
-               
-               
              )
-             
-             
-             
     ),
+    tabPanel("Pre-Processing", "Model Content Here"),
     
-    
-    
-    
-    tabPanel("Models",
-             
-             titlePanel("Histogram"),
-             
-             sidebarLayout(
-               
-               sidebarPanel(
-                 
-                 selectInput("var", "Variable", choices = NULL), 
-                 
-                 numericInput("bins", "Number of bins", min = 1, max = 50, step = 1, value = 10),
-                 
-                 radioButtons("color", "Color of bins:",
-                              
-                              choices = list("Blue" = "blue", "Red" = "red", "Green" = "green"),
-                              
-                              selected = "blue"),
-                 
-                 actionButton("click","Submit")
-                 
-               ),
-               
-               mainPanel(
-                 
-                 tabsetPanel(
-                   
-                   tabPanel("Histogram",
-                            
-                            plotOutput("plot2"))
-                   
-                   
-                 )
-                 
-               )
-               
-               
-             )
-             
-             
-             
-             
-             
-    )
-    
-    
-    
+    tabPanel("Model Predictions and Visuals", "Model Content Here")
   )
-  
-  
-  
 )
 
-
 # Define Server
-
 server <- function(input, output, session) {
-  
-  ##  
-  
+  # Reactive expression to handle data loading based on user selection or file upload
   File <- reactive({
-    
-    if(input$dataset == 'Upload your own file'){
-      
-      req(input$file)
-      
-      File <- input$file
-      
-      df <- data.frame(rbindlist(lapply(File$datapath, fread), use.names = TRUE, fill = TRUE))
-      
+    if (input$dataset == 'Upload your own file') {
+      req(input$file)  # Ensure file is uploaded
+      # Read file using data.table's fread for better performance
+      df <- data.frame(fread(input$file$datapath), use.names = TRUE, fill = TRUE)
       return(df)
-      
     } else {
-      
-      return(data_all)
-    } 
-    
-  })
-  
-  
-  ##
-  
-  observeEvent(File(), {
-    
-    updateSelectInput(session, "response",
-                      
-                      choices = names(File()))
-  })
-  
-  
-  
-  observeEvent(File(), {
-    
-    updateSelectInput(session, "explanatory",
-                      
-                      choices = names(File()))
-  }) 
-  
-  
-  observeEvent(File(), {
-    
-    updateSelectInput(session, "var",
-                      
-                      choices = names(File()))
-  })
-  
-  ##
-  
-  
-  output$data_preview <- renderDataTable({
-    
-    File()
-    
-  }) 
-  
-  
-  ##
-  output$plot1 <- renderPlot({
-    
-    p = ggplot(data = File(), aes_string(x = input$explanatory, y = input$response)) +
-      
-      geom_point(alpha = input$shade) +
-      
-      theme_minimal() 
-    
-    
-    if(input$marginal) {
-      
-      p <- ggMarginal(p, type = "histogram")
+      # Return the dataset based on user selection
+      switch(input$dataset,
+             "All_Data" = data_all,
+             "Demographic_Data" = data_dem,
+             "Opinion_Data" = data_opin)
     }
-    
-    
-    p
-    
   })
   
-  
-  ##
-  
-  output$result1 <- renderDataTable({
-    
-    summary_data <- summary(File()[[input$response]])
-    
-    data.frame(Measure = names(summary_data), Value = as.character(summary_data))
-    
+  # Render data preview table
+  output$data_preview <- renderDataTable({
+    File()
   })
   
-  
-  ##
-  
-  plot2 <- eventReactive(input$click, 
-                         
-                         ggplot(data = File(), aes_string(x = input$var)) +
-                           
-                           geom_histogram(binwidth = diff(range(File()[[input$var]]) / input$bins), fill = input$color, color = "black") +
-                           
-                           labs(x = input$var, y = "Frequency", title = "Histogram") +
-                           
-                           theme_minimal()
-                         
-  )
-  
-  
-  
-  output$plot2 <- renderPlot({
-    
-    plot2() 
-    
+  # Observe changes in the loaded data to update UI elements
+  observe({
+    df <- req(File())  # Ensure data is loaded
+    updateSelectInput(session, "response", choices = names(df))
+    updateSelectInput(session, "var", choices = names(df))
   })
   
+  # Update the UI elements for selecting variables dynamically based on the dataset loaded
+  output$varSelectUI_split <- renderUI({
+    if (!is.null(dataset()) && ncol(dataset()) > 0) {
+      selectInput("responseVar", "Select Response Variable:", choices = names(dataset()))
+    }
+  })
+  
+  # Logic to handle dynamic UI for file uploads
+  output$fileInputUI_split <- renderUI({
+    if (input$dataset_split == "Upload your own file") {
+      fileInput("datafile_split", "Upload CSV File:", accept = ".csv")
+    }
+  })
+  
+  # Observe the action button for data splitting
+  observeEvent(input$splitData, {
+    req(dataset())  # Ensure the dataset is loaded
+    data <- dataset()
+    responseVar <- input$responseVar  # The variable to predict
+    
+    # Check if the selected response variable exists in the dataset
+    if (responseVar %in% names(data)) {
+      # Randomly sample indices for the training set based on the input ratio
+      set.seed(123)  # For reproducibility
+      trainIndices <- sample(seq_len(nrow(data)), size = floor(nrow(data) * input$splitRatio / 100))
+      trainSet <- data[trainIndices, , drop = FALSE]
+      testSet <- data[-trainIndices, , drop = FALSE]
+      
+      # Update data previews
+      output$preview <- renderDT({
+        datatable(data)
+      })
+      output$trainPreview <- renderDT({
+        datatable(trainSet)
+      })
+      output$testPreview <- renderDT({
+        datatable(testSet)
+      })
+    } else {
+      showNotification("Selected response variable is not in the dataset", type = "error")
+    }
+  })
 }
 
-
-
-
-
 # Run the application 
-
 shinyApp(ui = ui, server = server)
