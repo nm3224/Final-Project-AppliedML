@@ -232,7 +232,7 @@ server <- function(input, output, session) {
   preprocess_data <- function(train_data, test_data) {
     
     # Apply preprocessing steps
-    blueprint <- recipe(CLASS_ ~ ., data = train_data) %>%
+    blueprint <- recipe(split_data()$response_variable ~ ., data = train_data) %>%
       step_other(all_nominal_predictors(),
                  threshold = 0.01,
                  other = "Other") %>%
@@ -298,8 +298,8 @@ server <- function(input, output, session) {
     response_variable <- selected_response()
     
     # Extract actual values from the dataset
-    actual_train_values <- train_data[[response_variable]]
-    actual_test_values <- test_data[[response_variable]]
+    actual_train_values <- train_data[[split_data()$response_variable]]
+    actual_test_values <- test_data[[split_data()$response_variable]]
     
     if (input$plotType == "Scatterplot") {
       # Scatterplot of actual vs predicted values
